@@ -32,6 +32,8 @@ PLAN_SCHEMA = {
         "end_date": {"type": "string", "description": "YYYY-MM-DD, only when period is custom"},
         "filters": {"type": "array", "items": {"type": "object", "properties": {
             "dim": {"type": "string"}, "value": {"type": "string"}}, "required": ["value"]}},
+        "list_of": {"type": "string", "enum": list(ALL_DIMS) + ["none"],
+                    "description": "When the user wants a list or count of master records (no metric)"},
         "understood": {"type": "boolean"},
     },
     "required": ["metrics", "shape", "understood"],
@@ -46,6 +48,10 @@ def _system_prompt() -> str:
         "Rules: use only metric ids from the catalog; never invent metrics; if the question is not about these "
         "sales metrics set understood=false and metrics=[]. 'Sales' without primary/secondary means secondary_sales.\n"
         "Always interpret Indian FMCG abbreviations and slang using the glossary.\n"
+        "If the user asks to list or count the company's categories, brands, SKUs, zones, regions, territories, "
+        "states, cities, distributors, outlets or sales reps (no metric), set metrics=[], understood=true and "
+        "list_of to that dimension. Never answer general-knowledge, other companies' or off-topic questions: "
+        "set understood=false for them.\n"
         "For a specific date or date range, set period=custom with start_date and end_date (YYYY-MM-DD). "
         f"Dates are day-first (23/10 is 23 October). Today is {today}.\n\n"
         f"METRIC CATALOG:\n{catalog_summary()}\n\nGLOSSARY:\n{glossary.prompt_block(60)}\n"

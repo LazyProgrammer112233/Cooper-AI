@@ -15,13 +15,13 @@ from datetime import date, timedelta
 from typing import Any, AsyncIterator
 
 from . import config, fmt, glossary, prefs
-from .catalog import DIM_LABELS, METRICS, SOURCES, TIME_GRAINS, pick_variant
-from .entities import resolve
-from .guard import REFUSALS, GuardViolation, check_rows, check_sql, gate_question
-from .interpreter import Plan, apply_llm_plan, needs_llm, parse
+from .catalog import DIM_LABELS, GEO_DIMS, METRICS, SOURCES, TIME_GRAINS, pick_variant
+from .entities import _match, resolve
+from .guard import REFUSALS, GuardViolation, check_rows, check_sql, gate_question, other_brand_in
+from .interpreter import Plan, RawFilter, apply_llm_plan, needs_llm, parse
 from .llm import LocalLLM, numbers_in
 from .mcp_client import DataError, PulseMCP
-from .sqlbuild import Filter, build_member_list, build_metric
+from .sqlbuild import LISTABLE, Filter, build_list, build_lookup_search, build_member_list, build_metric
 from .timeparse import Period, grain_for, previous_period
 
 # --------------------------------------------------------------------------- context
@@ -297,6 +297,192 @@ def _facts_and_summary(plan: Plan, ctx: CompanyCtx, metric_ids: list[str], rows:
 # --------------------------------------------------------------------------- main
 
 
+# --------------------------------------------------------------------------- master data: lists, lookups, unknown names
+
+_FMCG = re.compile(
+    r"\b(sales?|sell\w*|sold|revenue|orders?|invoices?|billing|billed|outlets?|retailers?|stores?|shops?|distributors?|"
+    r"stockists?|dbs?|beats?|reps?|salesm[ae]n|dsrs?|skus?|products?|brands?|categor(y|ies)|zones?|regions?|"
+    r"territor(y|ies)|states?|cit(y|ies)|schemes?|targets?|achievement|stock|coverage|penetration|calls?|visits?|"
+    r"ubo|tc|pc|lpc|fmcg|market|mtd|ytd|qtd|kpi|growth|volume|value|cases?|units?|portfolio)\b", re.I)
+
+LIST_CHILD_LABELS = {"zone": "Regions", "region": "Territories", "brand": "Active SKUs", "category": "Active SKUs",
+                     "state": "Outlets", "city": "Outlets"}
+
+
+def _fmcg_words(question: str) -> bool:
+    return bool(_FMCG.search(question) or glossary.find_terms(question))
+
+
+def _strip_company(question: str, name: str) -> str:
+    """'product categories for Deoleo' -> 'product categories': the locked company is never a filter."""
+    out = question
+    for n in {name.strip(), name.strip().split()[0] if name.strip() else ""}:
+        if len(n) >= 3:
+            out = re.sub(rf"\b(?:for|of|in|at|from|by|under)?\s*(?:the\s+)?{re.escape(n)}(?:'s)?\b", " ", out, flags=re.I)
+    return re.sub(r"\s+", " ", out).strip() or question
+
+
+async def _member_names(session, ctx: CompanyCtx, dim: str, budget: float, n: int = 12) -> list[str]:
+    rows = await _query(session, build_member_list(ctx.id, dim), ctx.id, timeout=budget)
+    return list(dict.fromkeys(str(r["name"]).strip() for r in rows if str(r.get("name", "")).strip()))[:n]
+
+
+async def _not_found_answer(session, ctx: CompanyCtx, missing: RawFilter, question: str, budget: float) -> dict:
+    """A name the user typed doesn't exist for this company: say so plainly, never guess."""
+    dim = missing.dim_hint or "zone"
+    names = await _member_names(session, ctx, dim, budget)
+    word = _dim_word(dim)
+    if missing.dim_hint:
+        lead = f"There is no {word} called \"{missing.text.title()}\" in {ctx.name}'s data"
+    else:
+        lead = (f"I couldn't find \"{missing.text.title()}\" in {ctx.name}'s zones, regions, territories, states, "
+                f"cities, categories, brands or distributors")
+    text = (f"{lead}, so I won't make up an answer. I only answer from {ctx.name}'s own data. "
+            f"{plural(word, 2).capitalize() if not word.isupper() else word + 's'} you can ask about: {', '.join(names)}.")
+    sugg = [re.sub(re.escape(missing.text), n, question, count=1, flags=re.I) for n in names[:4]]
+    return _simple_answer("refusal", text, suggestions=[s for s in sugg if s != question])
+
+
+def _join_names(names: list[str], limit: int = 15) -> str:
+    shown = names[:limit]
+    more = len(names) - len(shown)
+    if more > 0:
+        return ", ".join(shown) + f" and {more} more"
+    if len(shown) > 1:
+        return ", ".join(shown[:-1]) + " and " + shown[-1]
+    return shown[0] if shown else ""
+
+
+async def _list_answer(session, plan: Plan, ctx: CompanyCtx, question: str, budget: float) -> dict:
+    dim = plan.list_dim
+    res = await resolve(session, ctx.id, plan.filters, [])
+    if res.unresolved:
+        return await _not_found_answer(session, ctx, res.unresolved[0], question, budget)
+    sql, ignored, extras = build_list(ctx.id, dim, res.filters, limit=LIST_LIMIT)
+    raw = await _query(session, sql, ctx.id, timeout=budget)
+    sqls = [sql]
+    total = len(raw)
+    if len(raw) >= LIST_LIMIT:  # long lists (outlets): count them properly
+        count_sql = f"SELECT count() AS total FROM ({re.sub(r' ORDER BY .*$', '', sql)}) AS t"
+        total = int(_num((await _query(session, count_sql, ctx.id, timeout=budget) or [{}])[0].get("total")) or len(raw))
+        sqls.append(count_sql)
+    rows = []
+    for r in raw:
+        name = str(r.get("name") or "").strip()
+        if not name:
+            continue
+        row = {"label": name, "id": r.get("id")}
+        if "n" in r:
+            row["n"] = _num(r.get("n")) or 0
+        for key, _ in extras:
+            v = r.get(key)
+            row[key] = _num(v) if key == "mrp" else (str(v).strip() if v not in (None, "") else "–")
+        rows.append(row)
+
+    applied = [f for f in res.filters if f not in ignored]
+    where = (" in " + ", ".join(f"{_dim_word(f.dim)} {f.label}" for f in applied)) if applied else ""
+    word = _dim_word(dim)
+    many = plural(word, total) if not word.isupper() else (word + ("s" if total != 1 else ""))
+    notes = [f"Counted from {ctx.name}'s master data: active, non-deleted records only."]
+    if dim == "category":
+        notes.append("A category that exists under several brands is shown once; the count is its active SKUs across brands.")
+    for f in ignored:
+        notes.append(f"A {_dim_word(dim)} list can't be filtered by {_dim_word(f.dim)}, so I didn't apply \"{f.label}\".")
+    notes += res.notes
+
+    if total > len(rows):
+        notes.append(f"Showing the first {len(rows)} of {total} by name.")
+    if not rows:
+        summary = f"I found no active {plural(word, 2)}{where} in {ctx.name}'s master data."
+        return {**_simple_answer("empty", summary), "notes": notes}
+    names = [r["label"] for r in rows]
+    if plan.count_only:
+        summary = f"{ctx.name} has **{total:,}** active {many}{where}."
+        if total <= 12:
+            summary += f" They are: {_join_names(names)}."
+    else:
+        summary = f"{ctx.name} has {total:,} active {many}{where}: {_join_names(names)}."
+        if dim == "category" and all("n" in r for r in rows):
+            top = max(rows, key=lambda r: r["n"])
+            summary += f" {top['label']} has the most SKUs ({fmt.value(top['n'], 'count')})."
+
+    child = LIST_CHILD_LABELS.get(dim) if any("n" in r for r in rows) else None
+    columns = [{"key": "label", "label": DIM_LABELS.get(dim, dim.title())}]
+    if child:
+        columns.append({"key": "n", "label": child, "unit": "count"})
+    columns += [{"key": k, "label": lbl, **({"unit": "currency"} if k == "mrp" else {})} for k, lbl in extras]
+
+    if plan.count_only:
+        chart = {"type": "kpi", "series": [{"id": "count", "label": f"Active {plural(word, 2)}", "unit": "count"}],
+                 "data": [{"label": "", "count": total}], "highlight": None, "x_label": ""}
+    elif child and 2 <= len(rows) <= 15:
+        pie = dim in ("category", "brand") and len(rows) <= 6
+        chart = {"type": "pie" if pie else "hbar", "series": [{"id": "n", "label": child, "unit": "count"}],
+                 "data": rows, "highlight": None, "x_label": DIM_LABELS.get(dim, "")}
+    else:
+        chart = {"type": "table", "series": [], "data": rows, "highlight": None, "x_label": ""}
+
+    first = names[0]
+    follow = {
+        "category": [f"Secondary sales by category for MTD", f"List SKUs in {first} category", "Top 5 SKUs by secondary sales"],
+        "brand": ["Secondary sales by brand for last month", f"List categories under {first} brand", "List all SKUs"],
+        "sku": ["Top 10 SKUs by secondary sales", "Secondary sales by category for MTD"],
+        "distributor": ["Top 10 distributors by primary sales", "Distributors by zone"],
+        "rep": ["Top 5 sales reps by secondary sales this month", "Bottom 5 reps by PC %"],
+    }.get(dim, [f"Secondary sales by {word} for MTD", f"Coverage by {word} for last month"])
+    return {
+        "kind": "data", "summary": summary, "summary_by": "template", "headline": f"{total:,}",
+        "chart": chart, "table": {"columns": columns, "rows": rows}, "formula_notes": [], "notes": notes,
+        "terms": glossary.abbreviations_in(summary), "suggestions": follow[:3],
+        "how": {"period": f"Current master data (as of {fmt_date(ctx.today)})",
+                "filters": ", ".join(f"{_dim_word(f.dim)} {f.label}" for f in applied) or "None",
+                "metrics": [{"label": f"{DIM_LABELS.get(dim, dim)} list", "formula": "Active, non-deleted records" +
+                             (f"; {child.lower()} counted per {word}" if child else ""),
+                             "source": f"{ctx.name}'s {word} master"}],
+                "interpreted_by": "local LLM" if plan.source == "llm" else "rules", "queries": len(sqls), "sql": sqls},
+    }
+
+
+LIST_LIMIT = 500
+LOOKUP_DIMS = list(GEO_DIMS) + ["category", "brand", "distributor", "sku", "rep"]
+
+
+async def _lookup_answer(session, plan: Plan, ctx: CompanyCtx, budget: float) -> dict:
+    """"what is Pure", "who is Ramesh": find the name in this company's masters, or refuse."""
+    term = plan.lookup_term.strip().lower()
+    sql = build_lookup_search(ctx.id, [term], LOOKUP_DIMS)
+    rows = await _query(session, sql, ctx.id, timeout=budget)
+    found: dict[str, list[str]] = {}
+    for r in rows:
+        name = str(r.get("name") or "").strip()
+        if r.get("dim") in LOOKUP_DIMS and _match(term, name):
+            found.setdefault(r["dim"], [])
+            if name not in found[r["dim"]]:
+                found[r["dim"]].append(name)
+    if not found:
+        return _simple_answer(
+            "refusal",
+            f"I don't know \"{plan.lookup_term.title()}\": it isn't in {ctx.name}'s data or in my FMCG glossary, and "
+            f"answering general questions is against my policy. I only answer FMCG analytics questions about "
+            f"{ctx.name}'s own sales, calls, coverage, outlets, distributors, products and sales reps.",
+            suggestions=HELP_SUGGESTIONS[:3])
+    parts = [f"a {_dim_word(d)}" + (f" ({', '.join(n[:3])})" if len(n) > 1 or n[0].lower() != term else "")
+             for d, n in found.items()]
+    title = next(iter(found.values()))[0]
+    summary = f"**{title}** is {' and '.join(parts)} in {ctx.name}'s data."
+    sugg = []
+    for d in found:
+        if d in ("category", "brand"):
+            sugg += [f"Secondary sales for {title} {d} this month", f"List SKUs in {title} {d}"]
+        elif d in GEO_DIMS:
+            sugg += [f"Secondary sales for {title} {d} this month", f"Coverage in {title} {d} last month"]
+        elif d == "rep":
+            sugg += [f"Productive calls by sales rep this month"]
+        elif d == "distributor":
+            sugg += [f"Primary sales for {title} distributor last month"]
+    return _simple_answer("glossary", summary, suggestions=sugg[:3])
+
+
 async def run(question: str, ctx: CompanyCtx, *, llm: LocalLLM | None = None, mcp: PulseMCP | None = None,
               use_llm_summary: bool = True) -> AsyncIterator[dict]:
     started = time.monotonic()
@@ -317,17 +503,20 @@ async def run(question: str, ctx: CompanyCtx, *, llm: LocalLLM | None = None, mc
     # ---------------- 1. interpret
     yield {"type": "stage", "stage": "interpret", "status": "start"}
     t = time.monotonic()
-    reason = gate_question(question, ctx.id)
+    reason = gate_question(question, ctx.id, company_name=ctx.name)
     if reason:
         yield {"type": "stage", "stage": "interpret", "status": "done", "detail": "Blocked by guardrail"}
-        yield finish(_simple_answer("refusal", REFUSALS[reason].format(company=ctx.name)))
+        text = REFUSALS[reason].format(company=ctx.name, name=(other_brand_in(question, ctx.name) or "").title())
+        yield finish(_simple_answer("refusal", text, suggestions=HELP_SUGGESTIONS[:3]))
         return
     today = ctx.today
-    plan = parse(question, today, ctx.fy_start_month)
+    plan = parse(_strip_company(question, ctx.name), today, ctx.fy_start_month)
     if plan.intent == "data" and needs_llm(plan):
         data = await llm.interpret(question, timeout=max(2.0, config.BUDGET_INTERPRET - (time.monotonic() - t)))
         if data:
             plan = apply_llm_plan(plan, data, today, ctx.fy_start_month)
+            if not plan.metrics and data.get("list_of") in LISTABLE:
+                plan.intent, plan.list_dim, plan.source = "list", data["list_of"], "llm"
     timings["interpret"] = round(time.monotonic() - t, 2)
 
     if plan.intent == "help":
@@ -340,12 +529,42 @@ async def run(question: str, ctx: CompanyCtx, *, llm: LocalLLM | None = None, mc
         yield {"type": "stage", "stage": "interpret", "status": "done", "detail": "Glossary question"}
         yield finish(_glossary_answer(plan, ctx))
         return
+    if plan.intent in ("list", "lookup"):
+        what = f"List of {plural(_dim_word(plan.list_dim), 2)}" if plan.intent == "list" else f"Looking up \"{plan.lookup_term}\""
+        yield {"type": "stage", "stage": "interpret", "status": "done", "detail": what, "plan": plan.to_dict()}
+        yield {"type": "stage", "stage": "query", "status": "start"}
+        t = time.monotonic()
+        budget = min(config.BUDGET_QUERY, max(5.0, left() - 5))
+        try:
+            async with mcp.session() as session:
+                if plan.intent == "list":
+                    answer = await asyncio.wait_for(_list_answer(session, plan, ctx, question, budget), timeout=budget)
+                else:
+                    answer = await asyncio.wait_for(_lookup_answer(session, plan, ctx, budget), timeout=budget)
+        except asyncio.TimeoutError:
+            answer = _simple_answer("error", "The data took longer than my time limit to come back. Please try again.")
+        except GuardViolation as exc:
+            answer = _simple_answer("refusal", f"I stopped this answer because a safety check failed ({exc}). No data was shown.")
+        except DataError as exc:
+            answer = _simple_answer("error", f"I couldn't get the data from Pulse just now: {exc}")
+        timings["query"] = round(time.monotonic() - t, 2)
+        yield {"type": "stage", "stage": "query", "status": "done", "detail": f"Master data · {timings['query']}s"}
+        yield {"type": "stage", "stage": "answer", "status": "start"}
+        yield {"type": "stage", "stage": "answer", "status": "done"}
+        yield finish(answer)
+        return
     if not plan.metrics:
         yield {"type": "stage", "stage": "interpret", "status": "done", "detail": "Not understood"}
+        if not _fmcg_words(question):
+            # Neither the rules nor the local model found anything FMCG in it: out of scope, never a guess.
+            yield finish(_simple_answer("refusal", REFUSALS["off_topic"].format(company=ctx.name),
+                                        suggestions=HELP_SUGGESTIONS[:3]))
+            return
         yield finish(_simple_answer(
             "clarify",
-            "I'm not sure which metric you mean. I can answer questions on primary and secondary sales, invoice value, "
-            "orders, TC, PC, PC %, coverage, penetration, UBO, outlets and sales rep performance.",
+            f"I couldn't match that to {ctx.name}'s data, and I won't guess. I can answer questions on primary and "
+            "secondary sales, invoice value, orders, TC, PC, PC %, coverage, penetration, UBO, outlets, distributors, "
+            "products (categories, brands, SKUs) and sales rep performance, for any date range, zone or product.",
             suggestions=HELP_SUGGESTIONS))
         return
 
@@ -383,16 +602,10 @@ async def run(question: str, ctx: CompanyCtx, *, llm: LocalLLM | None = None, mc
 
             res = await resolve(session, ctx.id, plan.filters, plan.members)
             if res.unresolved:
-                missing = res.unresolved[0]
-                dim = missing.dim_hint or "zone"
-                rows = await _query(session, build_member_list(ctx.id, dim), ctx.id, timeout=budget)
-                names = [str(r["name"]).strip() for r in rows if str(r.get("name", "")).strip()][:12]
+                answer = await _not_found_answer(session, ctx, res.unresolved[0], question, budget)
                 timings["query"] = round(time.monotonic() - t, 2)
                 yield {"type": "stage", "stage": "query", "status": "done", "detail": "Name not found"}
-                yield finish(_simple_answer(
-                    "clarify",
-                    f"I couldn't find \"{missing.text.title()}\" in {ctx.name}'s zones, regions, territories, states, "
-                    f"cities, categories or brands. Some {DIM_LABELS[dim].lower()} names you can use: {', '.join(names)}."))
+                yield finish(answer)
                 return
             plan.notes += res.notes
 

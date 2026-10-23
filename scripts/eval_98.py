@@ -28,6 +28,10 @@ from backend.app.mcp_client import PulseMCP, QueryResult  # noqa: E402
 FIXTURE = ROOT / "backend" / "tests" / "fixtures" / "test_sheet_98.json"
 
 
+# Names the fake company does not have, so "not found" answers can be tested offline.
+UNKNOWN_NAMES = {"earth", "jupiter", "atlantis", "gotham", "narnia", "xyzzy", "prime minister"}
+
+
 class _FakeSession:
     """Answers with plausible rows so the pipeline can be checked without Pulse access."""
 
@@ -42,9 +46,13 @@ class _FakeSession:
             first_dim = re.search(r"SELECT '(\w+)' AS dim", sql).group(1)
             terms = re.search(r"IN \(([^)]*)\)", sql).group(1)
             for t in re.findall(r"'((?:[^'\\]|\\.)*)'", terms):
-                if t in ("xyz", "abc", "nowhere"):
+                if t in ("xyz", "abc", "nowhere") or t in UNKNOWN_NAMES:
                     continue
                 rows.append({"dim": first_dim, "id": 100 + len(rows), "name": t.title(), "term": t})
+        elif re.match(r"SELECT (i\.id|s\.sku|ifNull\(c\.cat_name|\* FROM|initcapUTF8)", sql):  # master lists
+            for i, n in enumerate(["Pure", "EV", "EL", "Lotion"]):
+                rows.append({"id": 500 + i, "name": n, "n": 10 * (i + 1), "category": "Pure", "brand": "Bertolli",
+                             "brands": "Bertolli, Figaro", "mrp": 99.0 + i, "city": "Pune", "state": "Maharashtra", "_k": n})
         elif sql.startswith("SELECT any(") or "AS name, count() AS n" in sql:
             rows = [{"name": n, "id": i} for i, n in enumerate(["East", "North", "South", "West"])]
         else:

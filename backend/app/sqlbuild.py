@@ -308,3 +308,133 @@ def build_member_list(company_id: int, dim: str, limit: int = 40) -> str:
     table, id_col, name_col, company_col = LOOKUPS[dim]
     return (f"SELECT any({name_col}) AS name, toInt64({id_col}) AS id FROM {table} FINAL "
             f"WHERE {company_col} = {cid} GROUP BY id ORDER BY name LIMIT {int(limit)}")
+
+
+# --------------------------------------------------------------------------- master lists
+
+
+@dataclass(frozen=True)
+class ListSpec:
+    table: str
+    id_col: str
+    name_col: str
+    company_col: str
+    active: str  # condition for active, non-deleted rows
+    parents: dict[str, str] = field(default_factory=dict)  # filter dim -> column in this master
+    extras: tuple[tuple[str, str, str], ...] = ()  # (key, label, expression)
+    child: str | None = None  # what the per-item count counts ("SKUs", "regions", ...)
+
+
+LIST_SPECS: dict[str, ListSpec] = {
+    "zone": ListSpec("master_facompanyzones", "Id", "Name", "Company", "IsDeactive = 0", child="regions"),
+    "region": ListSpec("master_regions", "Id", "Name", "CompanyId", "Deleted = 0 AND IsDeactive = 0",
+                       parents={"zone": "ZoneId"}, child="territories"),
+    "territory": ListSpec("master_territories", "Id", "Name", "CompanyId", "Deleted = 0 AND IsDeactive = 0",
+                          parents={"zone": "CompanyZoneId", "region": "RegionId"}),
+    "brand": ListSpec("master_faproductdivision", "Id", "Name", "CompanyId", "Deleted = 0 AND IsDeactive = 0", child="SKUs"),
+    "distributor": ListSpec("master_fadistributors", "Id", "Name", "CompanyId", "Deleted = 0 AND IsDeactive = 0",
+                            parents={"zone": "ZoneId", "region": "RegionId", "state": "State", "city": "CityName"},
+                            extras=(("city", "City", "CityName"), ("state", "State", "State"))),
+    "rep": ListSpec("master_clientemployees", "Id", "Name", "Company",
+                    "Deleted = 0 AND IsDeleted = 0 AND IsFieldAppuser = 1 AND IsTrainingUser = 0",
+                    parents={"zone": "CompanyZoneId", "region": "RegionId"}),
+    "outlet": ListSpec("master_f2klocations", "ID", "ShopName", "Company", "IsBlocked = 0",
+                       parents={"state": "State", "city": "City"},
+                       extras=(("city", "City", "City"), ("state", "State", "State"))),
+}
+LISTABLE = tuple(LIST_SPECS) + ("category", "sku", "state", "city")
+
+
+def _parent_cond(col: str, f: Filter) -> str:
+    if f.names:
+        return f"lower(trimBoth({col})) IN ({_names(f.names)})"
+    return f"{col} IN ({_ints(f.ids)})"
+
+
+def _product_chain(cid: int) -> str:
+    """Active SKUs with their primary category and brand (SKU -> secondary category -> primary category -> brand)."""
+    return (
+        f"(SELECT toInt64(ID) AS sku, any(Name) AS sku_name, any(MRP) AS mrp, toInt64(any(ProductCategoryId)) AS sc "
+        f"FROM master_facompanyproducts FINAL WHERE CompanyId = {cid} AND Deleted = 0 AND IsActive = 1 GROUP BY sku) AS s "
+        f"LEFT JOIN (SELECT toInt64(Id) AS sc_id, toInt64(any(ProductPrimaryCategoryId)) AS pc "
+        f"FROM master_faproductsecondarycategory FINAL WHERE CompanyId = {cid} GROUP BY sc_id) AS x ON s.sc = x.sc_id "
+        f"LEFT JOIN (SELECT toInt64(Id) AS pc_id, any(Name) AS cat_name, toInt64(any(ProductDivisionId)) AS div "
+        f"FROM master_faproductprimarycategory FINAL WHERE CompanyId = {cid} GROUP BY pc_id) AS c ON x.pc = c.pc_id "
+        f"LEFT JOIN (SELECT toInt64(Id) AS div_id, any(Name) AS brand_name "
+        f"FROM master_faproductdivision FINAL WHERE CompanyId = {cid} GROUP BY div_id) AS b ON c.div = b.div_id"
+    )
+
+
+def _child_counts(cid: int, dim: str) -> str:
+    """(pid, n) rows: how many active children each item of `dim` has."""
+    if dim == "zone":
+        return (f"SELECT toInt64(ZoneId) AS pid, count() AS n FROM master_regions FINAL WHERE CompanyId = {cid} "
+                f"AND Deleted = 0 AND IsDeactive = 0 GROUP BY pid")
+    if dim == "region":
+        return (f"SELECT toInt64(RegionId) AS pid, count() AS n FROM master_territories FINAL WHERE CompanyId = {cid} "
+                f"AND Deleted = 0 AND IsDeactive = 0 GROUP BY pid")
+    return f"SELECT c.div AS pid, count() AS n FROM {_product_chain(cid)} GROUP BY pid"  # brand: active SKUs
+
+
+def _product_list(cid: int, dim: str, filters: list[Filter], lim: int) -> tuple[str, list[Filter], list[tuple[str, str]]]:
+    where, ignored = [], []
+    for f in filters:
+        if f.dim == "category" and f.ids:
+            where.append(f"x.pc IN ({_ints(f.ids)})")
+        elif f.dim == "brand" and f.ids:
+            where.append(f"c.div IN ({_ints(f.ids)})")
+        else:
+            ignored.append(f)
+    cond = f" WHERE {' AND '.join(where)}" if where else ""
+    if dim == "sku":
+        sql = (f"SELECT s.sku AS id, s.sku_name AS name, c.cat_name AS category, b.brand_name AS brand, s.mrp AS mrp "
+               f"FROM {_product_chain(cid)}{cond} ORDER BY name LIMIT {lim}")
+        return sql, ignored, [("category", "Category"), ("brand", "Brand"), ("mrp", "MRP")]
+    # Grouped by name: the same category ("Pure") usually exists once per brand.
+    sql = (f"SELECT ifNull(c.cat_name, 'Not mapped') AS name, count() AS n, "
+           f"arrayStringConcat(arraySort(groupUniqArray(ifNull(b.brand_name, ''))), ', ') AS brands "
+           f"FROM {_product_chain(cid)}{cond} GROUP BY name ORDER BY n DESC LIMIT {lim}")
+    return sql, ignored, [("brands", "Brands")]
+
+
+def build_list(company_id: int, dim: str, filters: list[Filter], limit: int = 500) -> tuple[str, list[Filter], list[tuple[str, str]]]:
+    """Active items of one master (zones, categories, SKUs, distributors, reps...), with optional parent filters.
+
+    Returns (sql, filters that don't apply to this list, extra columns as (key, label)).
+    Rows carry id, name, and n (child count) where the master has children.
+    """
+    cid = int(company_id)
+    lim = int(limit)
+    if dim in ("state", "city"):
+        table, _, company_col, cols = OUTLET_MASTER
+        col = cols[dim]
+        where = [f"{company_col} = {cid}", "IsBlocked = 0", f"trimBoth({col}) != ''"]
+        ignored = []
+        for f in filters:
+            if f.dim in ("state", "city") and f.dim != dim:
+                where.append(_parent_cond(cols[f.dim], f))
+            else:
+                ignored.append(f)
+        sql = (f"SELECT initcapUTF8(any(trimBoth({col}))) AS name, lower(trimBoth({col})) AS _k, count() AS n "
+               f"FROM {table} FINAL WHERE {' AND '.join(where)} GROUP BY _k ORDER BY n DESC LIMIT {lim}")
+        return sql, ignored, []
+
+    if dim in ("category", "sku"):
+        return _product_list(cid, dim, filters, lim)
+    spec = LIST_SPECS[dim]
+    where = [f"{spec.company_col} = {cid}", spec.active]
+    ignored: list[Filter] = []
+    for f in filters:
+        if f.dim in spec.parents:
+            where.append(_parent_cond(spec.parents[f.dim], f))
+        else:
+            ignored.append(f)
+    extra_sel = "".join(f", any({expr}) AS {key}" for key, _, expr in spec.extras)
+    inner = (f"SELECT toInt64({spec.id_col}) AS id, any({spec.name_col}) AS name{extra_sel} FROM {spec.table} FINAL "
+             f"WHERE {' AND '.join(where)} GROUP BY id")
+    extras = [(key, label) for key, label, _ in spec.extras]
+    if spec.child:
+        sql = (f"SELECT i.id AS id, i.name AS name, c.n AS n{''.join(f', i.{k} AS {k}' for k, _ in extras)} "
+               f"FROM ({inner}) AS i LEFT JOIN ({_child_counts(cid, dim)}) AS c ON i.id = c.pid ORDER BY name LIMIT {lim}")
+        return sql, ignored, extras
+    return f"SELECT * FROM ({inner}) AS i ORDER BY name LIMIT {lim}", ignored, extras

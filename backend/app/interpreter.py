@@ -44,6 +44,9 @@ class Plan:
     growth: bool = False
     placeholder_dim: str | None = None
     glossary_terms: list[str] = field(default_factory=list)
+    list_dim: str | None = None  # intent "list": which master to list
+    count_only: bool = False  # "how many ..."
+    lookup_term: str | None = None  # intent "lookup": "what is Pure", "who is Ramesh"
     notes: list[str] = field(default_factory=list)
     source: str = "rules"
     confidence: float = 1.0
@@ -55,7 +58,7 @@ class Plan:
             "compare_periods": [p.to_dict() for p in self.compare_periods],
             "filters": [f.__dict__ for f in self.filters], "members": [m.__dict__ for m in self.members],
             "order": self.order, "limit": self.limit, "extreme": self.extreme, "growth": self.growth,
-            "notes": self.notes, "source": self.source,
+            "notes": self.notes, "source": self.source, "list_dim": self.list_dim, "count_only": self.count_only,
         }
 
 
@@ -85,13 +88,13 @@ METRIC_PATTERNS: list[tuple[str, list[str]]] = [
     (r"active outlets?|active stores?|active retailers?|live outlets?", ["active_outlets"]),
     (r"visited outlets?|\butc\b|outlets? visited", ["visited_outlets"]),
     (r"outlet growth|new outlets?|outlet addition|outlets? added", ["new_outlets"]),
+    (r"lines per call|\blpc\b|\blppc\b", ["lpc"]),
     (r"productive calls?|productive visits?|\bpc\b", ["pc"]),
     (r"total calls?|\btc\b|\bcalls?\b|\bvisits?\b", ["tc"]),
     (r"outlet coverage|coverage", ["coverage_pct"]),
     (r"penetration", ["penetration_pct"]),
     (r"order value|order booking|booked value", ["order_value"]),
     (r"\borders?\b", ["orders"]),
-    (r"lines per call|\blpc\b|\blppc\b", ["lpc"]),
     (r"drop ?size|average bill(ing)? value|\babv\b|average order value|\baov\b", ["drop_size"]),
 ]
 
@@ -136,7 +139,7 @@ def _normalise(q: str) -> str:
     t = t.replace("’", "'").replace("–", "-")
     t = re.sub(r"\bsales\s*reps?\b|\bsales\s*representatives?\b|\bsales\s*executives?\b|\bsales\s*officers?\b", " rep ", t)
     t = re.sub(r"\bv/s\b|\bvs\b\.?", " vs ", t)
-    t = re.sub(r"\bproducts? categor(y|ies)\b", "category", t)
+    t = re.sub(r"\bproducts? categor(y|ies)\b", lambda m: "categor" + m.group(1), t)
     t = re.sub(r"\s+", " ", t)
     return t
 
@@ -201,12 +204,12 @@ def _extract_filters(t: str) -> tuple[list[RawFilter], str, str | None]:
     work = t
     # "<name> zone" / "<name> region" after for / in / of
     pat1 = re.compile(
-        r"\b(?:for|in|of|from|within|across)\s+(?:the\s+)?(?P<name>[a-z][a-z0-9&()\-/ ]{0,40}?)\s+"
+        r"\b(?:for|in|of|from|within|across|under)\s+(?:the\s+)?(?P<name>(?!(?:in|of|from|within|across|under)\b)[a-z](?:(?!\b(?:in|of|from|within|across|under)\b)[a-z0-9&()\-/ ]){0,40}?)\s+"
         r"(?P<dim>" + _DIM_WORDS + r"(?:\s*/\s*" + _DIM_WORDS + r")*)s?\b(?:\s+product)?"
     )
     # "sku xyz" / "category pure" / "distributor abc traders"
     pat2 = re.compile(
-        r"\b(?:for|in|of|from)\s+(?:the\s+)?(?P<dim>sku|brand|category|distributor|outlet|retailer|zone|region|territory|state|city)\s+"
+        r"\b(?:for|in|of|from|under)\s+(?:the\s+)?(?P<dim>sku|brand|category|distributor|outlet|retailer|zone|region|territory|state|city)\s+"
         r"(?P<name>[a-z0-9][a-z0-9&()\-/ ]{0,40}?)" + STOP_AFTER_NAME
     )
     for pat in (pat1, pat2):
@@ -215,7 +218,8 @@ def _extract_filters(t: str) -> tuple[list[RawFilter], str, str | None]:
             dim_word = m.group("dim").split("/")[0].strip()
             dim = {"terittory": "territory", "retailer": "outlet", "division": "brand", "hq": "territory"}.get(dim_word, dim_word)
             name = re.sub(r"\b(product|products|all|the)\b", " ", name).strip()
-            if name in ("all", "each", "every", "") or name.startswith("all "):
+            if name in ("all", "each", "every", "", "active", "inactive", "our", "my", "total", "available", "new", "by") \
+                    or name.startswith("all "):
                 continue
             if PLACEHOLDER.fullmatch(name) or PLACEHOLDER.search(name):
                 placeholder_dim = placeholder_dim or dim
@@ -234,7 +238,7 @@ def _extract_filters(t: str) -> tuple[list[RawFilter], str, str | None]:
             r"\b(last|this|next|previous|past|month|week|year|quarter|days?|today|yesterday|mtd|ytd|qtd|lmtd|"
             r"for|in|of|from|all|each|every|my|our|the|a|an|me|us|total|sales|data|trend|time|period|rep|reps|zones?|regions?|"
             r"states?|cities|city|categor(y|ies)|brands?|skus?|outlets?|distributors?|territor(y|ies)|calls?|orders?|"
-            r"coverage|penetration|ubo|tc|pc|percentage|value|products?)\b", name):
+            r"coverage|penetration|ubo|tc|pc|percentage|value|products?|by|wise|half|first|second)\b", name):
             continue
         if PLACEHOLDER.search(name):
             placeholder_dim = placeholder_dim or "zone"
@@ -246,7 +250,8 @@ def _extract_filters(t: str) -> tuple[list[RawFilter], str, str | None]:
 
 
 def _vs_members(t: str) -> list[RawFilter]:
-    m = re.search(r"\b(?:compare\s+)?(?P<a>[a-z][a-z ]{1,25}?)\s+vs\s+(?P<b>[a-z][a-z ]{1,25}?)(?=\s+(?:sales|coverage|penetration|ubo|calls|orders|tc|pc|for|in|by|last|this|mtd|ytd)\b|[?.]|$)", t)
+    m = re.search(r"\b(?:compare\s+)?(?P<a>[a-z][a-z ]{1,25}?)\s+vs\s+(?P<b>[a-z][a-z ]{1,25}?)(?=\s+(?:sales|coverage|penetration|ubo|calls|orders|tc|pc|for|in|by|last|this|mtd|ytd|secondary|primary|"
+                  r"productive|total|order|invoice|outlets?|drop|lines|active|visited)\b|[?.]|$)", t)
     if not m:
         return []
     a, b = m.group("a").strip(), m.group("b").strip()
@@ -274,6 +279,48 @@ def _limit(t: str) -> int | None:
     return None
 
 
+# --------------------------------------------------------------------------- lists and lookups
+
+PLURAL_DIMS = re.compile(
+    r"\b(categories|brands|skus|products|items|zones|regions|territories|states|cities|towns|distributors|stockists|"
+    r"dbs|outlets|retailers|stores|shops|reps|salesmen|dsrs|field users|employees)\b")
+LIST_CUE = re.compile(
+    r"^(what|which)\b|\blist\b|\bnames?\b|\bhow many\b|\bnumber of\b|\bno\.? of\b|\bcount\b|"
+    r"^(show|give|tell|get|display|fetch|find)\b|\b(do|does) (we|i|you|the company) (have|sell|stock)\b|"
+    r"\bwe (have|sell)\b|\bavailable\b|\bportfolio\b|\ball (the )?\w+\b|\bmapped\b|\bunder\b|\bbelong")
+COUNT_Q = re.compile(r"\bhow many\b|\bnumber of\b|\bno\.? of\b|\bcount\b|\btotal (number|no|count)\b")
+_PORTFOLIO = re.compile(r"\b(portfolio|product range|range of products|variants|pack sizes)\b")
+_LOOKUP_Q = re.compile(
+    r"^(?:(?:what|who) (?:is|was)|what's|who's|tell me (?:something )?about|define|explain|meaning of|"
+    r"do you know)\s+(?:the\s+|a\s+|an\s+)?(?P<x>[a-z0-9][a-z0-9 &'.\-]{0,40}?)\s*[?.!]*$")
+
+
+def _list_dim(t: str, rest: str) -> str | None:
+    """The master the user wants listed or counted, if this is a list question."""
+    if not LIST_CUE.search(t):
+        return None
+    if _PORTFOLIO.search(t):
+        return "sku"
+    dims = [d for _, d in _find_dims(rest)]
+    if not dims:
+        return None
+    if not PLURAL_DIMS.search(t) and not COUNT_Q.search(t) and not re.search(r"\b(list|all|names?)\b", t):
+        return None  # "which zone ..." without a metric is not a list request
+    return dims[0]
+
+
+def _lookup_term(t: str) -> str | None:
+    """"what is Pure", "who is Ramesh Kumar": a single name to look up in the company's masters."""
+    m = _LOOKUP_Q.match(t.strip())
+    if not m:
+        return None
+    x = m.group("x").strip(" .'")
+    if not x or len(x.split()) > 5 or re.search(
+            r"\b(top|best|worst|highest|lowest|most|least|total|my|our|this|last|today|trend)\b", x):
+        return None
+    return x
+
+
 # --------------------------------------------------------------------------- parse
 
 
@@ -282,7 +329,8 @@ def parse(question: str, today: date, fy_start_month: int = 4) -> Plan:
     plan = Plan()
 
     # Glossary questions: "what is UBO", "full form of PC", "how is coverage calculated"
-    if GLOSSARY_Q.search(t) and not re.search(r"\b(my|our|today|mtd|ytd|last|this|yesterday|show|trend)\b", t):
+    if GLOSSARY_Q.search(t) and not re.search(r"\b(my|our|today|mtd|ytd|last|this|yesterday|show|trend)\b", t) \
+            and not PLURAL_DIMS.search(t):
         terms = glossary.find_terms(t)
         if terms:
             plan.intent = "glossary"
@@ -344,6 +392,22 @@ def parse(question: str, today: date, fy_start_month: int = 4) -> Plan:
     filters, rest, placeholder_dim = _extract_filters(rest)
     plan.filters = filters
     plan.placeholder_dim = placeholder_dim
+
+    # Lists from the masters: "what are the product categories", "SKUs in Pure", "how many distributors in North"
+    if not plan.metrics and not compare_periods:
+        list_dim = _list_dim(t, rest)
+        if list_dim:
+            plan.intent = "list"
+            plan.list_dim = list_dim
+            plan.count_only = bool(COUNT_Q.search(t))
+            plan.placeholder_dim = None
+            return plan
+        term = _lookup_term(t)
+        if term:
+            plan.intent = "lookup"
+            plan.lookup_term = term
+            plan.filters = []
+            return plan
 
     # Compare members: "North vs South"
     if not compare_periods and len(plan.metrics) <= 1:

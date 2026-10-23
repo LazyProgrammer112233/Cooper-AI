@@ -154,7 +154,7 @@ _PATTERNS: list[tuple[re.Pattern, str]] = [
 
 _SIMPLE: list[tuple[str, str]] = [
     (r"\bmonth to date\b|\bmtd\b", "mtd"),
-    (r"\byear to date\b|\bytd\b|\bfytd\b", "ytd"),
+    (r"\byear to date\b|\bytd\b|\bfytd\b|\b(this|current) (financial |fiscal )?year\b", "ytd"),
     (r"\bquarter to date\b|\bqtd\b|\bthis quarter\b|\bcurrent quarter\b", "qtd"),
     (r"\blmtd\b|\blast month to date\b", "lmtd"),
     (r"\b(last|previous|past) quarter\b", "last_quarter"),
@@ -388,6 +388,15 @@ def _explicit_period(t: str, today: date, fy: int) -> tuple[Period, tuple[int, i
             k = ORDINALS[m.group(1)]
             s = rng[1] - timedelta(days=6) if k == -1 else rng[0] + timedelta(days=7 * (k - 1))
             e = rng[1] if k == -1 else min(s + timedelta(days=6), rng[1])
+            return _make(s, e, today), m.span()
+
+    # "first half of October", "second half of Sep"
+    m = re.search(rf"\b(first|1st|second|2nd)\s+half\s+of\s+({_MONTH})", t)
+    if m:
+        rng = _parse_month(m.group(2), today)
+        if rng:
+            first = m.group(1) in ("first", "1st")
+            s, e = (rng[0], rng[0].replace(day=15)) if first else (rng[0].replace(day=16), rng[1])
             return _make(s, e, today), m.span()
 
     # "week of 13 Oct", "week starting 13/10"

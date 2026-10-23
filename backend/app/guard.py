@@ -35,6 +35,7 @@ ALLOWED_TABLES: dict[str, str] = {
     "master_regions": "CompanyId",
     "master_territories": "CompanyId",
     "master_faproductprimarycategory": "CompanyId",
+    "master_faproductsecondarycategory": "CompanyId",
     "master_faproductdivision": "CompanyId",
     "master_facompanyproducts": "CompanyId",
     "master_fadistributors": "CompanyId",
@@ -96,7 +97,49 @@ _OTHER_COMPANY = re.compile(
 )
 
 
-def gate_question(question: str, company_id: int, other_company_names: set[str] | None = None) -> str | None:
+# Other FMCG companies and their best-known brands. A question naming one is about someone else's data
+# (or a trick), unless the name belongs to the locked company itself.
+_OTHER_BRANDS: dict[str, str] = {
+    r"mars": "mars", r"nestl[eé]": "nestle", r"maggi(e|es)?": "nestle", r"kit ?kat": "nestle", r"nescafe": "nestle",
+    r"hul": "hindustan unilever", r"hindustan unilever": "hindustan unilever", r"unilever": "unilever",
+    r"lifebuoy": "hindustan unilever", r"surf excel": "hindustan unilever", r"itc": "itc", r"aashirvaad": "itc",
+    r"colgate( palmolive)?": "colgate", r"colpal": "colgate", r"haldiram'?s?": "haldiram",
+    r"coca[ -]?cola": "coca cola", r"coke": "coca cola", r"pepsi(co)?": "pepsico", r"kurkure": "pepsico",
+    r"dabur": "dabur", r"britannia": "britannia", r"parle": "parle", r"amul": "amul", r"marico": "marico",
+    r"godrej": "godrej", r"emami": "emami", r"patanjali": "patanjali", r"p ?& ?g": "procter", r"procter": "procter",
+    r"tata consumer": "tata", r"mondelez": "mondelez", r"cadbury": "mondelez", r"oreo": "mondelez",
+    r"ferrero": "ferrero", r"kellogg'?s?": "kellogg", r"perfetti": "perfetti", r"reckitt": "reckitt",
+    r"dettol": "reckitt", r"horlicks": "horlicks", r"bournvita": "mondelez", r"kandhari": "kandhari", r"kbpl": "kandhari",
+    r"bisleri": "bisleri", r"jyothy": "jyothy",
+}
+_OTHER_BRANDS_RE = [(re.compile(rf"(?<![a-z0-9]){p}(?![a-z0-9])", re.I), owner) for p, owner in _OTHER_BRANDS.items()]
+
+# General-knowledge and chit-chat topics Cooper must not answer.
+_OFF_TOPIC = re.compile(
+    r"\b(prime minister|president|chief minister|governor|parliament|elections?|politic\w*|minister|"
+    r"capital (city )?of|weather|temperature|rain(fall)?|cricket|ipl|football|fifa|olympics?|"
+    r"movies?|films?|actors?|actress|songs?|music|singer|celebrit\w+|bollywood|hollywood|recipes?|cooking|"
+    r"jokes?|poems?|poetry|horoscope|astrology|zodiac|religion|god|bitcoin|crypto\w*|stock market|share price|"
+    r"sensex|nifty|news|translate|meaning of life|girlfriend|boyfriend|chatgpt|openai|gemini|"
+    r"write (a|an|me|some) (code|program|script|essay|letter|email|story|poem|song|article)|"
+    r"(python|javascript|java|c\+\+) (code|program|function)|who (invented|discovered|founded|wrote)|"
+    r"(height|age|wife|husband) of|universe|planet|galaxy|solar system|moon|sun\b)\b",
+    re.I,
+)
+
+
+def other_brand_in(question: str, company_name: str = "") -> str | None:
+    """The other company or brand the question names, unless it is the locked company's own."""
+    own = company_name.lower()
+    for rx, owner in _OTHER_BRANDS_RE:
+        m = rx.search(question)
+        if m and owner not in own and m.group(0).lower() not in own:
+            return m.group(0)
+    return None
+
+
+def gate_question(question: str, company_id: int, other_company_names: set[str] | None = None,
+                  company_name: str = "") -> str | None:
     """Return a refusal reason, or None when the question may proceed."""
     q = question.strip()
     if not q:
@@ -105,6 +148,10 @@ def gate_question(question: str, company_id: int, other_company_names: set[str] 
         return "too_long"
     if _INJECTION.search(q):
         return "injection"
+    if other_brand_in(q, company_name):
+        return "other_brand"
+    if _OFF_TOPIC.search(q):
+        return "off_topic"
     m = _OTHER_COMPANY.search(q)
     if m:
         digits = re.findall(r"\d{3,}", m.group(0))
@@ -124,6 +171,12 @@ REFUSALS = {
                       "If you need another company, start a new chat and select it there."),
     "injection": ("I can't do that. I only answer sales and distribution questions about {company}, "
                   "using its own data."),
+    "other_brand": ("That's against my policy. \"{name}\" isn't part of {company}'s data, and I can't answer about "
+                    "other companies or their brands. I only answer FMCG analytics questions about {company}'s own "
+                    "sales, calls, coverage, outlets, distributors, products and sales reps."),
+    "off_topic": ("That's outside what I can help with, and against my policy to answer. I'm an FMCG analytics "
+                  "assistant: I only answer questions about {company}'s own data, such as sales, calls, coverage, "
+                  "outlets, distributors, products and sales reps."),
     "too_long": "That question is a bit long for me. Could you ask it in one or two sentences?",
     "empty": "Please type a question about {company}'s sales, calls, coverage or outlets.",
 }
