@@ -145,11 +145,14 @@ export default function App() {
     try {
       await ask(question, session.token, (ev) => {
         if (ev.type === "stage") update((t) => ({ ...t, stages: { ...t.stages, [ev.stage]: { status: ev.status, detail: ev.detail } } }));
-        else update((t) => ({ ...t, answer: ev.answer }));
+        else {
+          update((t) => ({ ...t, answer: ev.answer }));
+          if (ev.answer.kind === "error" && /connect and authorize/i.test(ev.answer.summary)) setTimeout(unlock, 2500);
+        }
       });
     } catch (err) {
       const msg = (err as Error).message;
-      if (/company|session|signature/i.test(msg)) unlock();
+      if (/company|session|signature|connect and authorize/i.test(msg)) unlock();
       update((t) => ({ ...t, error: msg }));
     } finally {
       setBusy(false);

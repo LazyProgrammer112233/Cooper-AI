@@ -20,7 +20,8 @@ def _int(name: str, default: int) -> int:
 
 
 # Pulse MCP: the only data connector Cooper uses.
-PULSE_MCP_URL = os.getenv("PULSE_MCP_URL", "https://ado-mcp.fieldassist.io/mcp/data")
+PULSE_MCP_URL = os.getenv("PULSE_MCP_URL", "https://ado-mcp.fieldassist.io/mcp")
+# Normally empty: the "Connect and authorize" button signs in with a FieldAssist ID instead.
 PULSE_MCP_TOKEN = os.getenv("PULSE_MCP_TOKEN", "")
 # Optional extra headers as "Name: value; Name2: value2" for gateways that need them.
 PULSE_MCP_HEADERS = os.getenv("PULSE_MCP_HEADERS", "")
@@ -47,3 +48,7 @@ CACHE_TTL_SECONDS = _int("COOPER_CACHE_TTL", 300)
 MAX_ROWS = 500
 
 PREFS_DIR = Path(os.getenv("COOPER_PREFS_DIR", DATA_DIR / "prefs"))
+
+# Where the sign-in page sends the browser back to. Must match how you open Cooper.
+PUBLIC_URL = os.getenv("COOPER_PUBLIC_URL", "http://localhost:8000")
+AUTH_DIR = Path(os.getenv("COOPER_AUTH_DIR", DATA_DIR / "auth"))

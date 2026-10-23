@@ -9,3 +9,4 @@ backend/data/prefs/
 *.log
 scripts/out/
 *.tsbuildinfo
+backend/data/auth/

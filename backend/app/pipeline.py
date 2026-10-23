@@ -145,7 +145,12 @@ def _formula_note(metric_id: str, used_id: str, ctx: CompanyCtx, saved: bool) ->
     m = METRICS[metric_id]
     used = m.variant(used_id)
     term = glossary.by_metric(metric_id)
-    name = f"{term.term} ({term.full_form})" if term and term.term.lower() != term.full_form.lower() else m.label
+    if term and term.full_form.lower().startswith(term.term.lower()):
+        name = term.full_form
+    elif term:
+        name = f"{term.term} ({term.full_form})"
+    else:
+        name = m.label
     basic = m.default
     if saved:
         message = f"Using {ctx.name}'s chosen formula for {name}: {used.formula}."

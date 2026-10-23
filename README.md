@@ -23,15 +23,15 @@ Ollama, and reads data only through the **Pulse MCP**.
 
 ## Quick start
 
-You need Python 3.10+, Node 18+, [Ollama](https://ollama.com) and a Pulse MCP token.
+You need Python 3.10+, Node 18+, [Ollama](https://ollama.com) and a FieldAssist ID with Pulse MCP access.
 
 ```bash
 ollama pull qwen2.5:7b-instruct
-cp .env.example .env        # then put your PULSE_MCP_TOKEN in .env
 ./start.sh                  # Windows: start.bat
 ```
 
-Open http://localhost:8000, enter a company ID (for example 10600 for Deoleo) and ask away.
+Open http://localhost:8000, click **Connect and authorize Pulse MCP**, sign in with your
+FieldAssist ID, then enter a company ID (for example 10600 for Deoleo) and ask away.
 Full steps and troubleshooting: [docs/SETUP.md](docs/SETUP.md).
 
 ## How an answer is made

@@ -67,15 +67,43 @@ class PulseMCP:
         from mcp import ClientSession
         from mcp.client.streamable_http import streamablehttp_client
 
+        from .mcp_auth import NotConnected, _short, auth
+
+        # A fixed token in .env wins; otherwise use the FieldAssist sign-in saved by the Connect button.
+        oauth = None
+        if not config.PULSE_MCP_TOKEN:
+            if not auth.storage.has_tokens():
+                raise DataError("Pulse MCP isn't connected yet. Click \"Connect and authorize Pulse MCP\" first.")
+            oauth = auth.query_auth()
+        body_error: BaseException | None = None
         try:
-            async with streamablehttp_client(self.url, headers=_headers(), timeout=30) as (read, write, _):
+            async with streamablehttp_client(self.url, headers=_headers(), timeout=30, auth=oauth) as (read, write, _):
                 async with ClientSession(read, write) as session:
                     await session.initialize()
-                    yield _Session(session)
+                    try:
+                        yield _Session(session)
+                    except BaseException as exc:  # the caller's own error (guard, timeout): pass it on unchanged
+                        body_error = exc
+                        raise
         except DataError:
             raise
-        except Exception as exc:  # network, auth, protocol
-            raise DataError(f"Could not reach Pulse MCP at {self.url}: {exc}") from exc
+        except BaseException as exc:  # network, auth, protocol
+            if body_error is not None:
+                raise body_error from None
+            if not isinstance(exc, Exception) and not isinstance(exc, BaseExceptionGroup):
+                raise
+            msg = _short(exc)
+            if _is_not_connected(exc, NotConnected):
+                raise DataError("Your Pulse MCP sign-in has expired. Click \"Connect and authorize Pulse MCP\" again.") from exc
+            raise DataError(f"Could not reach Pulse MCP at {self.url}: {msg}") from exc
+
+
+def _is_not_connected(exc: BaseException, kind: type) -> bool:
+    if isinstance(exc, kind):
+        return True
+    if isinstance(exc, BaseExceptionGroup):
+        return any(_is_not_connected(e, kind) for e in exc.exceptions)
+    return isinstance(exc.__cause__, kind) if exc.__cause__ else False
 
 
 class _Session:

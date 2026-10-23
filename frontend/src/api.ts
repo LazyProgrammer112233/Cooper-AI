@@ -177,7 +177,32 @@ export async function getGlossary(): Promise<GlossaryTerm[]> {
   return (await r.json()).terms;
 }
 
-export async function getHealth(): Promise<{ llm: { ok: boolean; model?: string }; mcp_token_set: boolean }> {
+export interface McpStatus {
+  connected: boolean;
+  pending: boolean;
+  server_url: string;
+  error: string | null;
+  static_token: boolean;
+}
+
+export async function getMcpStatus(): Promise<McpStatus> {
+  const r = await fetch("/api/mcp/status");
+  if (!r.ok) throw new Error(await errorText(r));
+  return r.json();
+}
+
+export async function connectMcp(): Promise<{ auth_url?: string; connected?: boolean }> {
+  const r = await fetch("/api/mcp/connect", { method: "POST" });
+  if (!r.ok) throw new Error(await errorText(r));
+  return r.json();
+}
+
+export async function disconnectMcp(): Promise<McpStatus> {
+  const r = await fetch("/api/mcp/disconnect", { method: "POST" });
+  return r.json();
+}
+
+export async function getHealth(): Promise<{ llm: { ok: boolean; model?: string }; mcp: McpStatus }> {
   const r = await fetch("/api/health");
   return r.json();
 }

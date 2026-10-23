@@ -14,7 +14,7 @@ from datetime import date
 from pathlib import Path
 
 from fastapi import FastAPI, Header, HTTPException
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -22,6 +22,7 @@ from . import config, glossary, pipeline, prefs
 from .catalog import METRICS
 from .guard import GuardViolation, check_sql, sign_company, verify_company_token
 from .llm import LocalLLM
+from .mcp_auth import auth as pulse_auth
 from .mcp_client import DataError, PulseMCP
 
 app = FastAPI(title="Cooper AI", docs_url=None, redoc_url=None)
@@ -69,6 +70,38 @@ def _ctx(token: str | None) -> pipeline.CompanyCtx:
                                fy_start_month=data.get("fy", 4))
 
 
+@app.get("/api/mcp/status")
+async def mcp_status():
+    return {**pulse_auth.status(), "static_token": bool(config.PULSE_MCP_TOKEN)}
+
+
+@app.post("/api/mcp/connect")
+async def mcp_connect():
+    """Starts the FieldAssist sign-in for Pulse MCP and returns the URL to open."""
+    try:
+        return await pulse_auth.start()
+    except Exception as exc:
+        from .mcp_auth import _short
+        raise HTTPException(502, f"Couldn't start the Pulse MCP sign-in: {_short(exc)}") from exc
+
+
+@app.get("/api/mcp/callback")
+async def mcp_callback(code: str | None = None, state: str | None = None, error: str | None = None,
+                       error_description: str | None = None):
+    result = await pulse_auth.finish(code, state, error_description or error)
+    if result["connected"]:
+        return RedirectResponse("/?mcp=connected", status_code=303)
+    from urllib.parse import quote
+    return RedirectResponse(f"/?mcp=error&message={quote(result.get('error') or 'Sign-in failed')}", status_code=303)
+
+
+@app.post("/api/mcp/disconnect")
+async def mcp_disconnect():
+    pulse_auth.disconnect()
+    pipeline._CACHE.clear()
+    return pulse_auth.status()
+
+
 @app.post("/api/company/verify")
 async def verify_company(body: VerifyIn):
     cid = body.company_id
@@ -78,7 +111,7 @@ async def verify_company(body: VerifyIn):
         async with _mcp.session() as s:
             res = await s.ch_query(sql, top=1, timeout=15)
     except DataError as exc:
-        raise HTTPException(502, f"Couldn't reach Pulse MCP: {exc}") from exc
+        raise HTTPException(502, str(exc)) from exc
     row = res.rows[0] if res.rows else {}
     if not row.get("found") or row.get("deleted"):
         raise HTTPException(404, f"Company ID {cid} wasn't found, or it isn't active on the shared analytics server.")
@@ -144,7 +177,7 @@ async def get_glossary():
 @app.get("/api/health")
 async def health():
     llm = await _llm.health()
-    return {"ok": True, "llm": llm, "mcp_url": config.PULSE_MCP_URL, "mcp_token_set": bool(config.PULSE_MCP_TOKEN)}
+    return {"ok": True, "llm": llm, "mcp": {**pulse_auth.status(), "static_token": bool(config.PULSE_MCP_TOKEN)}}
 
 
 if FRONTEND.exists():
