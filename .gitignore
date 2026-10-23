@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+frontend/dist/
+.env
+backend/data/prefs/
+.pytest_cache/
+*.log
+scripts/out/
+*.tsbuildinfo

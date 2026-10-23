@@ -1,0 +1,590 @@
+[
+ {
+  "id": 1,
+  "level": "L1",
+  "category": "Sales",
+  "query": "Show primary sales for MTD."
+ },
+ {
+  "id": 2,
+  "level": "L1",
+  "category": "Sales",
+  "query": "Show secondary sales for MTD."
+ },
+ {
+  "id": 3,
+  "level": "L1",
+  "category": "Sales",
+  "query": "Show today's primary sales."
+ },
+ {
+  "id": 4,
+  "level": "L1",
+  "category": "Sales",
+  "query": "Show yesterday's secondary sales."
+ },
+ {
+  "id": 5,
+  "level": "L1",
+  "category": "Sales",
+  "query": "Show primary sales for last month."
+ },
+ {
+  "id": 6,
+  "level": "L2",
+  "category": "Sales",
+  "query": "Show sales trend for last 6 months."
+ },
+ {
+  "id": 7,
+  "level": "L2",
+  "category": "Sales",
+  "query": "Compare primary and secondary sales."
+ },
+ {
+  "id": 8,
+  "level": "L1",
+  "category": "Sales",
+  "query": "Show total invoice value today."
+ },
+ {
+  "id": 9,
+  "level": "L1",
+  "category": "Sales",
+  "query": "Show primary invoice value MTD."
+ },
+ {
+  "id": 10,
+  "level": "L1",
+  "category": "Sales",
+  "query": "Show secondary invoice value YTD."
+ },
+ {
+  "id": 11,
+  "level": "L1",
+  "category": "Call Productivity",
+  "query": "Show total calls today."
+ },
+ {
+  "id": 12,
+  "level": "L1",
+  "category": "Call Productivity",
+  "query": "Show productive calls today."
+ },
+ {
+  "id": 13,
+  "level": "L2",
+  "category": "Call Productivity",
+  "query": "Show TC vs PC trend."
+ },
+ {
+  "id": 14,
+  "level": "L1",
+  "category": "Call Productivity",
+  "query": "Show productive call percentage."
+ },
+ {
+  "id": 15,
+  "level": "L1",
+  "category": "Call Productivity",
+  "query": "Show average call start time."
+ },
+ {
+  "id": 16,
+  "level": "L2",
+  "category": "Call Productivity",
+  "query": "Which day had maximum productive calls?"
+ },
+ {
+  "id": 17,
+  "level": "L2",
+  "category": "Call Productivity",
+  "query": "Show call trend for this week."
+ },
+ {
+  "id": 18,
+  "level": "L2",
+  "category": "Call Productivity",
+  "query": "Compare TC and PC for last 30 days."
+ },
+ {
+  "id": 19,
+  "level": "L1",
+  "category": "Coverage",
+  "query": "Show coverage percentage today."
+ },
+ {
+  "id": 20,
+  "level": "L1",
+  "category": "Coverage",
+  "query": "Show outlet coverage MTD."
+ },
+ {
+  "id": 21,
+  "level": "L2",
+  "category": "Coverage",
+  "query": "Which region has highest coverage?"
+ },
+ {
+  "id": 22,
+  "level": "L2",
+  "category": "Coverage",
+  "query": "Which zone has lowest coverage?"
+ },
+ {
+  "id": 23,
+  "level": "L2",
+  "category": "Coverage",
+  "query": "Show coverage trend for last 15 days."
+ },
+ {
+  "id": 24,
+  "level": "L1",
+  "category": "Penetration",
+  "query": "Show penetration percentage today."
+ },
+ {
+  "id": 25,
+  "level": "L2",
+  "category": "Penetration",
+  "query": "Show penetration trend."
+ },
+ {
+  "id": 26,
+  "level": "L2",
+  "category": "Penetration",
+  "query": "Which state has highest penetration?"
+ },
+ {
+  "id": 27,
+  "level": "L2",
+  "category": "Penetration",
+  "query": "Which territory has lowest penetration?"
+ },
+ {
+  "id": 28,
+  "level": "L1",
+  "category": "UBO",
+  "query": "Show UBO percentage today."
+ },
+ {
+  "id": 29,
+  "level": "L1",
+  "category": "UBO",
+  "query": "Show unique billing outlets for MTD."
+ },
+ {
+  "id": 30,
+  "level": "L2",
+  "category": "UBO",
+  "query": "Compare UBO across zones."
+ },
+ {
+  "id": 31,
+  "level": "L1",
+  "category": "Orders",
+  "query": "Show total orders today."
+ },
+ {
+  "id": 32,
+  "level": "L1",
+  "category": "Orders",
+  "query": "Show orders for last 7 days."
+ },
+ {
+  "id": 33,
+  "level": "L2",
+  "category": "Orders",
+  "query": "Show order trend for last 3 months"
+ },
+ {
+  "id": 34,
+  "level": "L2",
+  "category": "Orders",
+  "query": "Which region/zone generated maximum orders?"
+ },
+ {
+  "id": 35,
+  "level": "L2",
+  "category": "Orders",
+  "query": "Which distributor generated minimum orders?"
+ },
+ {
+  "id": 36,
+  "level": "L1",
+  "category": "Outlet",
+  "query": "Show total active outlets."
+ },
+ {
+  "id": 37,
+  "level": "L1",
+  "category": "Outlet",
+  "query": "Show productive outlets."
+ },
+ {
+  "id": 38,
+  "level": "L1",
+  "category": "Outlet",
+  "query": "Show inactive outlets."
+ },
+ {
+  "id": 39,
+  "level": "L2",
+  "category": "Outlet",
+  "query": "Show outlet growth MTD."
+ },
+ {
+  "id": 40,
+  "level": "L2",
+  "category": "Outlet",
+  "query": "Show active outlets by state for last month"
+ },
+ {
+  "id": 41,
+  "level": "L2",
+  "category": "Geo+Time",
+  "query": "Show primary sales for North East Zone MTD."
+ },
+ {
+  "id": 42,
+  "level": "L2",
+  "category": "Geo+Time",
+  "query": "Show secondary sales for south zone this month."
+ },
+ {
+  "id": 43,
+  "level": "L2",
+  "category": "Geo+Time",
+  "query": "Show productive calls in West region yesterday."
+ },
+ {
+  "id": 44,
+  "level": "L2",
+  "category": "Geo+Time",
+  "query": "Show coverage for Karnataka last week."
+ },
+ {
+  "id": 45,
+  "level": "L2",
+  "category": "Geo+Time",
+  "query": "Show UBO for Mumbai MTD."
+ },
+ {
+  "id": 46,
+  "level": "L2",
+  "category": "Product+Time",
+  "query": "Show primary sales for all products category MTD."
+ },
+ {
+  "id": 47,
+  "level": "L2",
+  "category": "Product+Time",
+  "query": "Show secondary sales for SKU XYZ."
+ },
+ {
+  "id": 48,
+  "level": "L2",
+  "category": "Product+Time",
+  "query": "Show top selling brands this month."
+ },
+ {
+  "id": 49,
+  "level": "L3",
+  "category": "Product+Time",
+  "query": "Show lowest performing SKU last quarter."
+ },
+ {
+  "id": 50,
+  "level": "L2",
+  "category": "Product+Time",
+  "query": "Show order trend for Pure Product Category."
+ },
+ {
+  "id": 51,
+  "level": "L2",
+  "category": "Outlet+Geo",
+  "query": "Show productive outlets in South Zone."
+ },
+ {
+  "id": 52,
+  "level": "L2",
+  "category": "Outlet+Geo",
+  "query": "Show active outlets in xyz zone/terittory/region."
+ },
+ {
+  "id": 53,
+  "level": "L3",
+  "category": "Outlet+Geo",
+  "query": "Show distributors with lowest sales."
+ },
+ {
+  "id": 54,
+  "level": "L3",
+  "category": "Outlet+Geo",
+  "query": "Show top retailers by primary sales."
+ },
+ {
+  "id": 56,
+  "level": "L2",
+  "category": "Sales Rep",
+  "query": "Show lowest performing sales rep."
+ },
+ {
+  "id": 58,
+  "level": "L2",
+  "category": "Sales Rep",
+  "query": "Show Sales rep id of sales rep with lowest PC ?"
+ },
+ {
+  "id": 59,
+  "level": "L2",
+  "category": "Sales Rep",
+  "query": "Show top 10 sales reps by sales on invoice net value and PC"
+ },
+ {
+  "id": 60,
+  "level": "L2",
+  "category": "Sales Rep",
+  "query": "Show average calls per sales rep."
+ },
+ {
+  "id": 61,
+  "level": "L3",
+  "category": "Multi-filter",
+  "query": "Show primary sales for North Zone MTD by category."
+ },
+ {
+  "id": 62,
+  "level": "L3",
+  "category": "Multi-filter",
+  "query": "Show productive calls for xyz zone/region/territory last 15 days."
+ },
+ {
+  "id": 63,
+  "level": "L3",
+  "category": "Multi-filter",
+  "query": "Compare TC and PC for South Zone over last 30 days."
+ },
+ {
+  "id": 64,
+  "level": "L3",
+  "category": "Multi-filter",
+  "query": "Show UBO trend for MTD."
+ },
+ {
+  "id": 65,
+  "level": "L3",
+  "category": "Multi-filter",
+  "query": "Show coverage for xyz category in West region."
+ },
+ {
+  "id": 66,
+  "level": "L3",
+  "category": "Trend",
+  "query": "Trend analysis of TC and PC."
+ },
+ {
+  "id": 67,
+  "level": "L3",
+  "category": "Trend",
+  "query": "Trend analysis of primary sales for last 6 months."
+ },
+ {
+  "id": 68,
+  "level": "L3",
+  "category": "Trend",
+  "query": "Compare primary vs secondary sales trend."
+ },
+ {
+  "id": 70,
+  "level": "L3",
+  "category": "Trend",
+  "query": "Show penetration trend by month."
+ },
+ {
+  "id": 72,
+  "level": "L3",
+  "category": "Ranking",
+  "query": "Bottom 5 territories by productive calls."
+ },
+ {
+  "id": 73,
+  "level": "L3",
+  "category": "Ranking",
+  "query": "Top distributors by invoice value."
+ },
+ {
+  "id": 74,
+  "level": "L3",
+  "category": "Ranking",
+  "query": "Lowest performing sales reps by PC."
+ },
+ {
+  "id": 75,
+  "level": "L3",
+  "category": "Ranking",
+  "query": "Top brands by secondary sales."
+ },
+ {
+  "id": 76,
+  "level": "L3",
+  "category": "Drilldown",
+  "query": "Drill down primary sales from Zone to State."
+ },
+ {
+  "id": 79,
+  "level": "L3",
+  "category": "Drilldown",
+  "query": "Show city-wise coverage percentage."
+ },
+ {
+  "id": 80,
+  "level": "L3",
+  "category": "Drilldown",
+  "query": "Show outlet-wise sales for Delhi."
+ },
+ {
+  "id": 81,
+  "level": "L2",
+  "category": "Comparison",
+  "query": "Compare North vs South sales."
+ },
+ {
+  "id": 82,
+  "level": "L2",
+  "category": "Comparison",
+  "query": "Compare this month vs last month sales."
+ },
+ {
+  "id": 83,
+  "level": "L2",
+  "category": "Comparison",
+  "query": "Compare TC and PC for last 3 months."
+ },
+ {
+  "id": 84,
+  "level": "L2",
+  "category": "Comparison",
+  "query": "Compare primary and secondary sales by state."
+ },
+ {
+  "id": 85,
+  "level": "L2",
+  "category": "Comparison",
+  "query": "Compare coverage across zones."
+ },
+ {
+  "id": 86,
+  "level": "L1",
+  "category": "Natural",
+  "query": "Which zone is the least performing?"
+ },
+ {
+  "id": 87,
+  "level": "L2",
+  "category": "Natural",
+  "query": "Give me the name of the sales rep with the lowest PC."
+ },
+ {
+  "id": 88,
+  "level": "L1",
+  "category": "Natural",
+  "query": "Show me primary sales data for MTD."
+ },
+ {
+  "id": 89,
+  "level": "L2",
+  "category": "Natural",
+  "query": "Show me primary sales data for last 6 months."
+ },
+ {
+  "id": 90,
+  "level": "L3",
+  "category": "Natural",
+  "query": "Trend analysis of TC and PC."
+ },
+ {
+  "id": 91,
+  "level": "L2",
+  "category": "Natural",
+  "query": "Which territory has the highest coverage today?"
+ },
+ {
+  "id": 92,
+  "level": "L2",
+  "category": "Natural",
+  "query": "Which distributor generated the highest secondary sales?"
+ },
+ {
+  "id": 93,
+  "level": "L2",
+  "category": "Natural",
+  "query": "Show top 10 brands by invoice value."
+ },
+ {
+  "id": 94,
+  "level": "L2",
+  "category": "Natural",
+  "query": "Which outlet generated the maximum sales this week?"
+ },
+ {
+  "id": 95,
+  "level": "L2",
+  "category": "Natural",
+  "query": "Show lowest performing SKUs for MTD."
+ },
+ {
+  "id": 96,
+  "level": "L2",
+  "category": "Natural",
+  "query": "Compare primary and secondary sales for North Zone."
+ },
+ {
+  "id": 97,
+  "level": "L2",
+  "category": "Natural",
+  "query": "Show productive calls by state."
+ },
+ {
+  "id": 98,
+  "level": "L2",
+  "category": "Natural",
+  "query": "Give me coverage for South Zone last month."
+ },
+ {
+  "id": 99,
+  "level": "L2",
+  "category": "Natural",
+  "query": "Which city has the lowest penetration?"
+ },
+ {
+  "id": 100,
+  "level": "L1",
+  "category": "Natural",
+  "query": "Show active outlets by region."
+ },
+ {
+  "id": 101,
+  "level": "L2",
+  "category": "Natural",
+  "query": "Show UBO trend for the last 30 days."
+ },
+ {
+  "id": 102,
+  "level": "L2",
+  "category": "Natural",
+  "query": "Show outlet growth month over month."
+ },
+ {
+  "id": 104,
+  "level": "L2",
+  "category": "Natural",
+  "query": "Show sales rep ranking based on productive calls."
+ },
+ {
+  "id": 105,
+  "level": "L3",
+  "category": "Natural",
+  "query": "Show primary sales by category and region for the last quarter."
+ }
+]
