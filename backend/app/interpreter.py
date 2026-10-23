@@ -14,7 +14,7 @@ from datetime import date
 
 from . import glossary
 from .catalog import ALL_DIMS, GEO_DIMS, METRICS
-from .timeparse import Period, find_period, preset
+from .timeparse import Period, find_period, find_period_span, preset
 
 # --------------------------------------------------------------------------- plan
 
@@ -295,13 +295,21 @@ def parse(question: str, today: date, fy_start_month: int = 4) -> Plan:
 
     # Period(s)
     compare_periods: list[Period] = []
+    left = right = ""
     if re.search(r"this month vs last month|current month vs (last|previous) month|mtd vs lmtd|month on month comparison", t):
         compare_periods = [preset("mtd", today, fy_start_month), preset("last_month", today, fy_start_month)]
     elif re.search(r"this week vs last week", t):
         compare_periods = [preset("this_week", today, fy_start_month), preset("last_week", today, fy_start_month)]
     elif re.search(r"today vs yesterday", t):
         compare_periods = [preset("today", today, fy_start_month), preset("yesterday", today, fy_start_month)]
-    period = find_period(t, today, fy_start_month)
+    elif re.search(r"\s(?:vs|versus|compared to|against)\s", t):
+        # "23 Oct vs 22 Oct", "September vs October", "Q1 vs Q2"
+        left, right = re.split(r"\s(?:vs|versus|compared to|against)\s", t, maxsplit=1)
+        a, b = find_period(left, today, fy_start_month), find_period(right, today, fy_start_month)
+        if a and b and a != b:
+            compare_periods = [a, b]
+    found_period = find_period_span(t, today, fy_start_month)
+    period = found_period[0] if found_period else None
     plan.period_explicit = period is not None
 
     # Metrics (blanking their text)
@@ -318,7 +326,17 @@ def parse(question: str, today: date, fy_start_month: int = 4) -> Plan:
     metrics = [m for m in metrics if m in METRICS]
     # "orders" + "order value" etc: keep order but drop duplicates
     plan.metrics = list(dict.fromkeys(metrics))[:3]
-    rest = re.sub(GENERIC_SALES, " ", rest)
+    rest = re.sub(GENERIC_SALES, lambda m: " " * len(m.group(0)), rest)  # keep positions
+    # The date phrase ("23rd October", "1-15 Oct", "week of 13 Oct") is not a place or a split
+    if compare_periods:
+        rest = re.sub(r"\b(vs|versus|compared to|against)\b", " ", rest)
+        for side in (left, right) if left else ():
+            hit = find_period_span(side, today, fy_start_month)
+            if hit:
+                off = t.find(side)
+                rest = _blank(rest, off + hit[1][0], off + hit[1][1])
+    elif found_period:
+        rest = _blank(rest, *found_period[1])
 
     # Named filters and placeholders ("from zone to state" is a drill-down, not a place)
     rest = re.sub(r"\bfrom (zone|region|state|territory|category|brand|city) to (zone|region|state|territory|category|brand|city|sku|outlet|distributor)\b",
@@ -415,6 +433,11 @@ def parse(question: str, today: date, fy_start_month: int = 4) -> Plan:
         if not snapshot_only and not (plan.metrics == ["active_outlets"]):
             plan.notes.append("No period given, so I used month to date (MTD).")
 
+    # A single day has nothing to trend over: show the day's value
+    if plan.shape == "trend" and plan.period and plan.period.days == 1:
+        plan.shape = "value"
+        plan.grain = None
+
     # Values over several months -> show by month (the total is in the summary)
     if plan.shape == "value" and plan.period and plan.period.days >= 60 and plan.metrics and \
             not any(m in ("active_outlets", "inactive_outlets") for m in plan.metrics):
@@ -450,6 +473,16 @@ def apply_llm_plan(plan: Plan, data: dict, today: date, fy_start_month: int = 4)
     if not plan.period_explicit and data.get("period") in (
             "today", "yesterday", "this_week", "last_week", "mtd", "last_month", "qtd", "last_quarter", "ytd"):
         plan.period = preset(data["period"], today, fy_start_month)
+    elif not plan.period_explicit and data.get("start_date"):
+        # A custom range the model read from the question, e.g. "the Diwali week"
+        try:
+            s_ = date.fromisoformat(str(data["start_date"])[:10])
+            e_ = date.fromisoformat(str(data.get("end_date") or data["start_date"])[:10])
+            if s_ <= e_ <= today and (e_ - s_).days < 800:
+                from .timeparse import _make
+                plan.period = _make(s_, e_, today)
+        except ValueError:
+            pass
     for f in data.get("filters", [])[:3]:
         if isinstance(f, dict) and f.get("value"):
             dim = f.get("dim") if f.get("dim") in ALL_DIMS else None

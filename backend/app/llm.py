@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+from datetime import date
 
 import httpx
 
@@ -26,7 +27,9 @@ PLAN_SCHEMA = {
         "order": {"type": "string", "enum": ["asc", "desc"]},
         "limit": {"type": "integer"},
         "period": {"type": "string", "enum": ["today", "yesterday", "this_week", "last_week", "mtd", "last_month",
-                                               "qtd", "last_quarter", "ytd", "none"]},
+                                               "qtd", "last_quarter", "ytd", "custom", "none"]},
+        "start_date": {"type": "string", "description": "YYYY-MM-DD, only when period is custom"},
+        "end_date": {"type": "string", "description": "YYYY-MM-DD, only when period is custom"},
         "filters": {"type": "array", "items": {"type": "object", "properties": {
             "dim": {"type": "string"}, "value": {"type": "string"}}, "required": ["value"]}},
         "understood": {"type": "boolean"},
@@ -36,12 +39,15 @@ PLAN_SCHEMA = {
 
 
 def _system_prompt() -> str:
+    today = date.today().isoformat()
     return (
         "You are the question interpreter for Cooper AI, a sales analytics assistant for one Indian FMCG company.\n"
         "Map the user's question to the metric catalog below. Reply with JSON only.\n"
         "Rules: use only metric ids from the catalog; never invent metrics; if the question is not about these "
         "sales metrics set understood=false and metrics=[]. 'Sales' without primary/secondary means secondary_sales.\n"
-        "Always interpret Indian FMCG abbreviations and slang using the glossary.\n\n"
+        "Always interpret Indian FMCG abbreviations and slang using the glossary.\n"
+        "For a specific date or date range, set period=custom with start_date and end_date (YYYY-MM-DD). "
+        f"Dates are day-first (23/10 is 23 October). Today is {today}.\n\n"
         f"METRIC CATALOG:\n{catalog_summary()}\n\nGLOSSARY:\n{glossary.prompt_block(60)}\n"
     )
 
