@@ -32,7 +32,7 @@ export interface Series {
 export type Row = Record<string, string | number | null | string[]> & { label: string };
 
 export interface Answer {
-  kind: "data" | "empty" | "glossary" | "help" | "clarify" | "refusal" | "error";
+  kind: "data" | "empty" | "glossary" | "help" | "clarify" | "refusal" | "error" | "rca";
   question: string;
   summary: string;
   summary_by?: "template" | "llm";
@@ -58,6 +58,29 @@ export interface Answer {
     sql: string[];
   };
   timings?: Record<string, number>;
+  rca?: Rca;
+}
+
+export interface RcaTable {
+  columns: { key: string; label: string; unit?: Unit }[];
+  rows: Row[];
+}
+
+export interface Rca {
+  metric: string;
+  metric_label: string;
+  unit: Unit;
+  direction: "up" | "down" | "flat";
+  worse: boolean;
+  current: { label: string; value: number | null };
+  previous: { label: string; value: number | null };
+  change: string;
+  why: { id: string; text: string; likely: boolean }[];
+  drivers: { label: string; unit: Unit; cur: number | null; prev: number | null; change: string; impact: number | null; chain?: string | null }[];
+  calendar: string[];
+  contributors: (RcaTable & { dim: string; label: string; unit: Unit })[];
+  coach: (RcaTable & { title: string }) | null;
+  actions: { title: string; steps: string[] }[];
 }
 
 export type StageName = "interpret" | "query" | "answer";

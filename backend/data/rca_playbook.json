@@ -1,0 +1,137 @@
+{
+  "_about": "FMCG field playbook: each finding Cooper can detect maps to 2-3 concrete actions. Edit freely; the ids are used by backend/app/rca.py.",
+  "findings": {
+    "holiday": {
+      "title": "Fewer working days",
+      "actions": [
+        "Compare per working day, not totals: the drop in totals is expected when a holiday falls in the period.",
+        "Plan make-up beats for the day before and after the holiday, so high-value outlets on the missed beat are not skipped.",
+        "Pre-load distributors and outlets with festive and fast-moving SKUs before the next holiday."
+      ]
+    },
+    "fewer_reps": {
+      "title": "Fewer reps in the market",
+      "actions": [
+        "Check leave and absenteeism with ASMs and fill vacant territories, or assign a buddy rep to cover the open beats.",
+        "Ask managers to confirm day-start every morning, so 'day not started' and missing attendance are followed up the same day.",
+        "Plan leave around festivals in advance so no territory goes uncovered for several days."
+      ]
+    },
+    "leave_up": {
+      "title": "More reps on leave",
+      "actions": [
+        "Review leave by territory; stagger festival leave so each beat still gets a visit.",
+        "Cover high-value outlets on open beats by telephonic orders or the distributor's salesman."
+      ]
+    },
+    "fewer_calls": {
+      "title": "Fewer calls per rep per day",
+      "actions": [
+        "Fix the beat plan (PJP): drop closed and duplicate outlets and keep 30-40 outlets per beat so a rep can finish it.",
+        "Nudge reps to start the day on time and track first-call time daily; late starts are the fastest way to lose calls.",
+        "Use joint working by ASMs on the weakest beats to find what slows reps down (travel, waiting at outlets, stock issues)."
+      ]
+    },
+    "low_pc_pct": {
+      "title": "Fewer visits turning into orders (PC %)",
+      "actions": [
+        "Give each rep a must-sell SKU list per outlet type and track it, so every call has a clear order to pitch.",
+        "Communicate the live schemes and offers at every call; low conversion often means retailers don't know the schemes.",
+        "Check stock at the distributor: reps can't book what isn't available, so out-of-stocks show up as non-productive calls."
+      ]
+    },
+    "zero_pc": {
+      "title": "Reps with full days and no orders",
+      "actions": [
+        "Call the reps who had zero-order days the same evening; check if they were on the right beat and if stock was available.",
+        "Pair these reps with a top performer or ASM for joint working this week.",
+        "Re-check their beats: outlets may be closed, wrongly mapped or served by another channel."
+      ]
+    },
+    "late_start": {
+      "title": "Late first calls",
+      "actions": [
+        "Send a start-day nudge at 9:30 and share a daily list of reps whose first call was after 10:30.",
+        "Agree a market start time with ASMs and review it in the morning huddle.",
+        "Plan the first outlet of every beat close to the rep's starting point to cut travel time."
+      ]
+    },
+    "low_drop_size": {
+      "title": "Smaller orders per productive call",
+      "actions": [
+        "Push upselling: suggest the next pack size up and bundle offers at each productive call.",
+        "Widen the range per outlet with assortment targets (lines per call) for each outlet class.",
+        "Focus high-value SKUs and schemes on the top outlets of each beat."
+      ]
+    },
+    "low_lpc": {
+      "title": "Fewer lines per call",
+      "actions": [
+        "Set a lines-per-call target per outlet type and show reps a suggested order in the app.",
+        "Train reps to pitch focus and new SKUs after the regular order, not instead of it.",
+        "Check if lines are missing because of distributor stock-outs on those SKUs."
+      ]
+    },
+    "ubo_down": {
+      "title": "Fewer outlets billed (UBO)",
+      "actions": [
+        "List outlets billed last period but not this one and get reps to visit them first.",
+        "Follow up with distributors on orders booked but not invoiced (stock or credit holds).",
+        "Run a reactivation scheme for outlets that stopped billing."
+      ]
+    },
+    "distributors_not_billing": {
+      "title": "Distributors billing less",
+      "actions": [
+        "Call the distributors whose billing dropped most and check stock, credit limit and pending claims.",
+        "Clear pending claims and scheme settlements quickly; distributors hold back orders when money is stuck.",
+        "Share a suggested order based on their secondary sales and stock norms (days of stock)."
+      ]
+    },
+    "low_invoice_value": {
+      "title": "Smaller primary invoices",
+      "actions": [
+        "Check if distributors are ordering fewer SKUs or smaller quantities; share stock-norm based suggested orders.",
+        "Use month-end and quarter-end schemes to bring forward primary orders.",
+        "Review credit limits for distributors who are cutting order size."
+      ]
+    },
+    "low_coverage": {
+      "title": "Fewer planned outlets visited (coverage)",
+      "actions": [
+        "Track PJP adherence daily: reps should visit every outlet on the planned beat.",
+        "Clean the beat plans so the planned outlets are real, open and reachable in a day.",
+        "Review reps who skip beats or change beats often with their ASM."
+      ]
+    },
+    "tour_plan": {
+      "title": "Tour plan not followed",
+      "actions": [
+        "Lock the monthly tour plan and get ASM approval for any beat change.",
+        "Share a daily report of reps who worked a different beat than planned."
+      ]
+    },
+    "region_drop": {
+      "title": "Decline concentrated in a few areas",
+      "actions": [
+        "Start with the areas listed below: hold a review with those ASMs/RSMs this week.",
+        "Check for local causes there first: a distributor issue, a vacant territory, a competitor scheme or local holidays."
+      ]
+    },
+    "season": {
+      "title": "Seasonal pattern",
+      "actions": [
+        "Compare with the same period last year to separate the seasonal effect from real performance.",
+        "Plan schemes and stock ahead of the season instead of reacting after it."
+      ]
+    },
+    "sustain": {
+      "title": "Keep the momentum",
+      "actions": [
+        "Share what worked in the top areas and reps with the rest of the team in the next review.",
+        "Lock in the gain: keep the beat plans, schemes and stock levels that drove the increase.",
+        "Check that the increase is real demand and not a one-off (scheme loading or a holiday catch-up)."
+      ]
+    }
+  }
+}

@@ -3,6 +3,7 @@ import { AlertTriangle, Check, ChevronDown, Info, Shield, Sigma, Sparkles, Table
 import { useEffect, useState } from "react";
 import type { Answer, StageName } from "../api";
 import { ChartView, DataTable } from "./ChartView";
+import { RcaView } from "./RcaView";
 
 export interface Turn {
   id: string;
@@ -152,7 +153,9 @@ export function AnswerCard({
                 </div>
               )}
 
-              {chart && (
+              {a.rca && <RcaView rca={a.rca} />}
+
+              {chart && !a.rca && (
                 <div className="viz">
                   {canToggle && (
                     <div className="viz-toggle" role="tablist">

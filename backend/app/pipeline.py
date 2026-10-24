@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Any, AsyncIterator
 
-from . import config, fmt, glossary, prefs
+from . import config, fmt, glossary, prefs, rca
 from .catalog import DIM_LABELS, GEO_DIMS, METRICS, SOURCES, TIME_GRAINS, pick_variant
 from .entities import _match, resolve
 from .guard import REFUSALS, GuardViolation, check_rows, check_sql, gate_question, other_brand_in
@@ -553,6 +553,10 @@ async def run(question: str, ctx: CompanyCtx, *, llm: LocalLLM | None = None, mc
         yield {"type": "stage", "stage": "answer", "status": "done"}
         yield finish(answer)
         return
+    if plan.intent == "rca":
+        async for ev in _run_rca(plan, ctx, question, llm, mcp, timings, left, use_llm_summary):
+            yield finish(ev) if ev.get("kind") else ev
+        return
     if not plan.metrics:
         yield {"type": "stage", "stage": "interpret", "status": "done", "detail": "Not understood"}
         if not _fmcg_words(question):
@@ -634,7 +638,7 @@ async def run(question: str, ctx: CompanyCtx, *, llm: LocalLLM | None = None, mc
     yield {"type": "stage", "stage": "answer", "status": "start"}
     t = time.monotonic()
     answer = _compose(plan, ctx, outcome, question)
-    if use_llm_summary and llm.enabled and left() > 8 and answer.get("facts"):
+    if use_llm_summary and config.RCA_LLM_REWORD and llm.enabled and left() > 8 and answer.get("facts"):
         allowed = numbers_in(answer["facts"]) | numbers_in(answer["summary"])
         text = await llm.summarise(question, answer["facts"], allowed,
                                    timeout=min(config.BUDGET_ANSWER, max(3.0, left() - 5)))
@@ -645,6 +649,74 @@ async def run(question: str, ctx: CompanyCtx, *, llm: LocalLLM | None = None, mc
     timings["answer"] = round(time.monotonic() - t, 2)
     yield {"type": "stage", "stage": "answer", "status": "done"}
     yield finish(answer)
+
+
+async def _run_rca(plan: Plan, ctx: CompanyCtx, question: str, llm: LocalLLM, mcp: PulseMCP, timings: dict,
+                   left, use_llm_summary: bool) -> AsyncIterator[dict]:
+    """Root cause analysis. Yields stage events, then the answer dict (wrapped by the caller)."""
+    metric_id = plan.metrics[0]
+    saved = prefs.load(ctx.id)
+    if metric_id == "inactive_outlets":
+        yield {"type": "stage", "stage": "interpret", "status": "done", "detail": "Snapshot metric"}
+        yield _simple_answer("clarify", f"Inactive outlets is a count of today's blocked outlets, so I can't compare it "
+                                        "over time. Ask why active outlets, coverage or UBO changed instead.",
+                             suggestions=["Why did coverage drop this month?", "Why is UBO low this month?"])
+        return
+    if metric_id == "active_outlets":
+        saved = {**saved, "active_outlets": "on_beats"}
+        plan.notes.append("To compare periods, active outlets are counted as outlets on salesmen's mapped beats.")
+    yield {"type": "stage", "stage": "interpret", "status": "done", "plan": plan.to_dict(),
+           "detail": f"Why: {METRICS[metric_id].label} · {plan.period.label}"}
+    yield {"type": "stage", "stage": "query", "status": "start"}
+    t = time.monotonic()
+    budget = min(config.BUDGET_RCA_QUERY, max(5.0, left() - 8))
+    try:
+        async with mcp.session() as session:
+            res = await resolve(session, ctx.id, plan.filters, [])
+            if res.unresolved:
+                answer = await _not_found_answer(session, ctx, res.unresolved[0], question, budget)
+                timings["query"] = round(time.monotonic() - t, 2)
+                yield {"type": "stage", "stage": "query", "status": "done", "detail": "Name not found"}
+                yield answer
+                return
+            answer = await asyncio.wait_for(
+                rca.analyse(session, _query, ctx=ctx, metric_id=metric_id, period=plan.period, filters=res.filters,
+                            saved=saved, question=question, budget=budget, extra_notes=plan.notes + res.notes),
+                timeout=budget)
+    except asyncio.TimeoutError:
+        timings["query"] = round(time.monotonic() - t, 2)
+        yield {"type": "stage", "stage": "query", "status": "done", "detail": "Timed out"}
+        yield _simple_answer("error", "The analysis took longer than my time limit. Try a shorter period or one zone, "
+                                      "and I'll answer within a minute.")
+        return
+    except GuardViolation as exc:
+        yield {"type": "stage", "stage": "query", "status": "done", "detail": "Blocked by guardrail"}
+        yield _simple_answer("refusal", f"I stopped this answer because a safety check failed ({exc}). No data was shown.")
+        return
+    except DataError as exc:
+        yield {"type": "stage", "stage": "query", "status": "done", "detail": "Data source error"}
+        yield _simple_answer("error", f"I couldn't get the data from Pulse just now: {exc}")
+        return
+    timings["query"] = round(time.monotonic() - t, 2)
+    yield {"type": "stage", "stage": "query", "status": "done",
+           "detail": f"{answer['how']['queries']} queries · {timings['query']}s"}
+
+    yield {"type": "stage", "stage": "answer", "status": "start"}
+    t = time.monotonic()
+    m = METRICS[metric_id]
+    answer["formula_notes"] = ([_formula_note(metric_id, answer["how"].get("variant") or saved.get(metric_id) or m.default.id,
+                                              ctx, metric_id in saved)] if m.ambiguous else [])
+    answer["terms"] = glossary.abbreviations_in(answer["summary"] + " " + " ".join(x["text"] for x in answer["rca"]["why"]))
+    if use_llm_summary and config.RCA_LLM_REWORD and llm.enabled and left() > 8 and answer.get("facts"):
+        allowed = numbers_in(answer["facts"])
+        text = await llm.explain(question, answer["facts"], allowed, timeout=min(12.0, max(3.0, left() - 5)))
+        if text:
+            answer["summary"] = text
+            answer["summary_by"] = "llm"
+    answer.pop("facts", None)
+    timings["answer"] = round(time.monotonic() - t, 2)
+    yield {"type": "stage", "stage": "answer", "status": "done"}
+    yield answer
 
 
 def _plan_jobs(plan: Plan, filters: list[Filter], members: list[Filter], today: date, ctx: CompanyCtx) -> list[Job]:

@@ -40,6 +40,11 @@ BUDGET_INTERPRET = _int("COOPER_BUDGET_INTERPRET", 10)
 BUDGET_QUERY = _int("COOPER_BUDGET_QUERY", 20)
 BUDGET_ANSWER = _int("COOPER_BUDGET_ANSWER", 20)
 BUDGET_TOTAL = _int("COOPER_BUDGET_TOTAL", 55)
+# Root cause answers run ~20 queries in parallel, so they get a bigger query budget inside the same hard stop.
+BUDGET_RCA_QUERY = _int("COOPER_BUDGET_RCA_QUERY", 40)
+# Let the local model reword root cause answers. Off by default: small models flip causes around
+# ("fewer holidays") while keeping every number, which the number check can't catch.
+RCA_LLM_REWORD = os.getenv("COOPER_RCA_LLM", "off").lower() in ("on", "1", "true", "yes")
 
 # Signs the company lock. A fresh secret per run is fine for localhost use.
 SESSION_SECRET = os.getenv("COOPER_SECRET") or secrets.token_hex(32)

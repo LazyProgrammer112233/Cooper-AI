@@ -14,6 +14,7 @@ from datetime import date
 
 from . import glossary
 from .catalog import ALL_DIMS, GEO_DIMS, METRICS
+from .rca import default_metric, is_rca
 from .timeparse import Period, find_period, find_period_span, preset
 
 # --------------------------------------------------------------------------- plan
@@ -27,7 +28,7 @@ class RawFilter:
 
 @dataclass
 class Plan:
-    intent: str = "data"  # data | glossary | help | clarify
+    intent: str = "data"  # data | glossary | help | clarify | list | lookup | rca
     metrics: list[str] = field(default_factory=list)
     shape: str = "value"  # value | trend | breakdown | ranking | compare_periods | compare_members
     dims: list[str] = field(default_factory=list)
@@ -327,9 +328,10 @@ def _lookup_term(t: str) -> str | None:
 def parse(question: str, today: date, fy_start_month: int = 4) -> Plan:
     t = _normalise(question)
     plan = Plan()
+    why = is_rca(t)  # "why did PC fall", "what are reps doing wrong", "how to improve coverage"
 
     # Glossary questions: "what is UBO", "full form of PC", "how is coverage calculated"
-    if GLOSSARY_Q.search(t) and not re.search(r"\b(my|our|today|mtd|ytd|last|this|yesterday|show|trend)\b", t) \
+    if not why and GLOSSARY_Q.search(t) and not re.search(r"\b(my|our|today|mtd|ytd|last|this|yesterday|show|trend)\b", t) \
             and not PLURAL_DIMS.search(t):
         terms = glossary.find_terms(t)
         if terms:
@@ -392,6 +394,25 @@ def parse(question: str, today: date, fy_start_month: int = 4) -> Plan:
     filters, rest, placeholder_dim = _extract_filters(rest)
     plan.filters = filters
     plan.placeholder_dim = placeholder_dim
+
+    # Root cause analysis: one metric, the asked period against its like-for-like comparison
+    if why:
+        plan.intent = "rca"
+        plan.shape = "rca"
+        if not plan.metrics:
+            mid, note = default_metric(t)
+            plan.metrics = [mid]
+            plan.notes.append(note)
+        plan.metrics = plan.metrics[:1]
+        plan.placeholder_dim = None
+        if compare_periods:
+            plan.period = compare_periods[0]
+        elif period is not None:
+            plan.period = period
+        else:
+            plan.period = preset("mtd", today, fy_start_month)
+            plan.notes.append("No period given, so I compared this month so far with the same days last month.")
+        return plan
 
     # Lists from the masters: "what are the product categories", "SKUs in Pure", "how many distributors in North"
     if not plan.metrics and not compare_periods:

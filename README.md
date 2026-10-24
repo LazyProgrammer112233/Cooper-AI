@@ -57,6 +57,35 @@ A hard stop at 55 seconds returns a clear "try a narrower question" message inst
 
 Cooper only ever calls the read-only `ch_query` tool of Pulse MCP.
 
+## "Why" questions (root cause analysis)
+
+Ask "Why are my productive calls low this week?", "Why is primary sales down?", "What are sales reps
+doing wrong?" or "How can we improve coverage?". Cooper then:
+
+1. **Compares like for like.** This week so far vs the same weekdays last week, MTD vs the same days
+   last month, last month vs the month before. Today is left out while its field data is syncing.
+2. **Builds a driver tree.** For example PC = reps in market × days per rep × calls per rep-day × PC %,
+   or primary = distributors billed × billing per distributor. Each driver's share of the change comes
+   from a log decomposition, so the shares add up to 100%. It also checks first-call time, late starts,
+   zero-order days, lines per call, beat and tour-plan adherence, UBO and drop size.
+3. **Finds where it moved.** It lists the zones, regions, reps, distributors and categories with the
+   biggest drops (or gains), and the reps to coach first.
+4. **Reads the calendar.** It counts working days and flags holidays, festivals and seasons from
+   `backend/data/india_calendar.json` (2025 to 2027, editable). Day-starts marked Holiday or Leave in
+   the field app turn a calendar guess into a fact. Calendar-only explanations are labelled "likely".
+5. **Suggests what to do.** Each finding maps to concrete actions in `backend/data/rca_playbook.json`.
+
+Every number comes from guarded Pulse queries (about 15 to 20, run in parallel, usually under 15 s).
+The answer text is a template. The local model can reword it (`COOPER_RCA_LLM=on`), but this is off by
+default: small models flip causes around while keeping the numbers, which the number check can't catch.
+
+## Voice input
+
+Click the mic in the message box and speak (English, India). The words appear as you talk, and the
+question is sent about 1.5 s after you stop. Edit the text, press Esc or click "cancel" to stop it
+being sent. This uses the browser's Web Speech API, so it works in Chrome, Edge and Safari; Chrome and
+Edge send the audio to their speech service. The mic is hidden in browsers without it.
+
 ## Project layout
 
 ```
@@ -66,7 +95,9 @@ backend/app/        FastAPI server and the answer pipeline
   sqlbuild.py       plan -> ClickHouse SQL
   guard.py          the guardrails
   pipeline.py       interpret -> query -> answer, chart choice, formula notes
-backend/data/       FMCG glossary
+  rca.py            "why" questions: comparison windows, driver tree, contributors, playbook
+  indcal.py         Indian holidays, festivals, seasons and working days
+backend/data/       FMCG glossary, Indian calendar, RCA playbook
 backend/tests/      guardrail attacks and all 98 test-sheet questions
 frontend/           React + Framer Motion + Recharts UI
 scripts/eval_98.py  runs the 98 test questions (live or --dry)

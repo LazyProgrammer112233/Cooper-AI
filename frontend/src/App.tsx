@@ -5,6 +5,8 @@ import {
   Building2,
   LogOut,
   MessageSquare,
+  Mic,
+  Square,
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
@@ -18,6 +20,7 @@ import { AnswerCard, type Turn } from "./components/AnswerCard";
 import { Gate } from "./components/Gate";
 import { Orb } from "./components/Orb";
 import { FormulasPanel, GlossaryPanel } from "./components/Panels";
+import { useSpeech } from "./components/useSpeech";
 import { greeting } from "./format";
 
 type Tab = "chat" | "formulas" | "glossary";
@@ -28,8 +31,11 @@ const CHIPS = [
   "Which zone has the lowest coverage?",
   "Top 10 brands by secondary sales",
   "Show UBO for last month",
-  "What is penetration?",
+  "Why are my productive calls low this week?",
+  "What are sales reps doing wrong?",
 ];
+
+const AUTO_SEND_MS = 1500;
 
 function useTheme() {
   const [theme, setTheme] = useState<"light" | "dark">(() => {
@@ -54,13 +60,42 @@ function useTheme() {
 
 function Composer({ onSend, busy, big }: { onSend: (q: string) => void; busy: boolean; big?: boolean }) {
   const [text, setText] = useState("");
+  const [pending, setPending] = useState(false); // voice question about to be sent
   const ref = useRef<HTMLTextAreaElement>(null);
-  function send() {
-    const q = text.trim();
+  const prefix = useRef("");
+  const timer = useRef<number | null>(null);
+
+  function cancelAuto() {
+    if (timer.current) window.clearTimeout(timer.current);
+    timer.current = null;
+    setPending(false);
+  }
+  function send(q0?: string) {
+    const q = (q0 ?? text).trim();
+    cancelAuto();
     if (!q || busy) return;
     onSend(q);
     setText("");
   }
+  const speech = useSpeech({
+    onText: (t) => setText((prefix.current ? prefix.current + " " : "") + t),
+    onDone: (t) => {
+      // Stopped talking: send after a short pause, unless the user edits or cancels first.
+      const full = ((prefix.current ? prefix.current + " " : "") + t).trim();
+      setPending(true);
+      timer.current = window.setTimeout(() => send(full), AUTO_SEND_MS);
+    },
+  });
+  function toggleMic() {
+    if (speech.listening) {
+      speech.stop();
+      return;
+    }
+    cancelAuto();
+    prefix.current = text.trim();
+    speech.start();
+  }
+  useEffect(() => () => cancelAuto(), []);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -68,29 +103,70 @@ function Composer({ onSend, busy, big }: { onSend: (q: string) => void; busy: bo
     el.style.height = Math.min(el.scrollHeight, 160) + "px";
   }, [text]);
   return (
-    <motion.div layout className={`composer ${big ? "composer-big" : ""}`}>
+    <motion.div layout className={`composer ${big ? "composer-big" : ""} ${speech.listening ? "is-listening" : ""}`}>
       <textarea
         ref={ref}
         rows={1}
         value={text}
         maxLength={500}
-        placeholder="Ask about sales, calls, coverage, UBO..."
-        onChange={(e) => setText(e.target.value)}
+        placeholder={speech.listening ? "Listening... speak your question" : "Ask about sales, calls, coverage, or why a number changed..."}
+        onChange={(e) => {
+          cancelAuto();
+          setText(e.target.value);
+        }}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
+          if (e.key === "Escape" && (pending || speech.listening)) {
+            e.preventDefault();
+            speech.stop();
+            cancelAuto();
+          } else if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             send();
           }
         }}
       />
       <div className="composer-row">
-        <span className="hint">Enter to send · Shift+Enter for a new line</span>
+        {pending ? (
+          <span className="hint voice-hint">
+            <span className="voice-bar" style={{ animationDuration: `${AUTO_SEND_MS}ms` }} />
+            Sending... edit the text or{" "}
+            <button className="link-btn" onClick={cancelAuto}>
+              cancel
+            </button>
+          </span>
+        ) : speech.listening ? (
+          <span className="hint voice-hint">Listening in English (India). Click the square to stop.</span>
+        ) : speech.error ? (
+          <span className="hint voice-error" onClick={speech.clearError}>
+            {speech.error}
+          </span>
+        ) : (
+          <span className="hint">Enter to send · Shift+Enter for a new line{speech.supported ? " · or use the mic" : ""}</span>
+        )}
+        {speech.supported && (
+          <motion.button
+            className={`mic ${speech.listening ? "on" : ""}`}
+            whileHover={{ scale: 1.06 }}
+            whileTap={{ scale: 0.94 }}
+            disabled={busy}
+            onClick={toggleMic}
+            aria-label={speech.listening ? "Stop listening" : "Speak your question"}
+            title={
+              speech.listening
+                ? "Stop listening"
+                : "Speak your question (English, India). Chrome and Edge send the audio to their speech service to turn it into text."
+            }
+          >
+            {speech.listening && <span className="mic-pulse" />}
+            {speech.listening ? <Square size={14} fill="currentColor" /> : <Mic size={18} />}
+          </motion.button>
+        )}
         <motion.button
           className="send"
           whileHover={{ scale: 1.06 }}
           whileTap={{ scale: 0.94 }}
           disabled={!text.trim() || busy}
-          onClick={send}
+          onClick={() => send()}
           aria-label="Send"
         >
           {busy ? <span className="spinner" /> : <ArrowUp size={18} />}

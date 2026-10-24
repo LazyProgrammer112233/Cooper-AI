@@ -124,6 +124,26 @@ class LocalLLM:
             return None
         return text
 
+    async def explain(self, question: str, facts: str, allowed_numbers: set[str], timeout: float) -> str | None:
+        """Reword a root cause analysis. It may not add causes or numbers; rejected if a number isn't in the facts."""
+        if not self.enabled:
+            return None
+        prompt = (
+            "Rewrite this sales analysis as a short, plain answer (2 to 3 sentences, no lists, no markdown). "
+            "Use ONLY the facts given. Say what changed, then the main reasons in order. Copy numbers exactly as "
+            "written. Do not add any cause, advice, number or guess that is not in the facts. Where a fact starts "
+            "with 'Likely:', say 'likely'.\n\n"
+            f"QUESTION: {question}\n\nFACTS:\n{facts}"
+        )
+        try:
+            text = await self._chat([{"role": "user", "content": prompt}], timeout=timeout, max_tokens=220)
+        except Exception:
+            return None
+        text = text.strip().strip('"')
+        if not text or len(text) > 900 or not numbers_are_grounded(text, allowed_numbers):
+            return None
+        return text
+
 
 _NUM = re.compile(r"(?<![\w.])(\d[\d,]*(?:\.\d+)?)")
 
