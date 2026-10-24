@@ -96,14 +96,27 @@ aaj PC kam aa raha hai") gets a one-line hello and then the normal answer.
 
 ## Voice input
 
-Click the mic in the message box and speak. The switch next to it chooses English (India) or Hindi;
-the choice is remembered. Listening carries on through short pauses, and the question is sent after
-2.5 s of silence. Edit the text, press Esc or click "cancel" to stop it being sent. For accuracy with
-Indian accents, Cooper asks the browser for up to five guesses per phrase and picks the one that best
-matches FMCG terms, Hindi words and the company's zone, state, brand and category names. It then fixes
-common mishearings ("productive cause" → productive calls, "you be oh" → UBO;
-`backend/data/speech_fixes.json`). This uses the browser's Web Speech API, so it works in Chrome, Edge
-and Safari; Chrome and Edge send the audio to their speech service.
+Click the mic and speak in English, Hindi or Hinglish. Cooper transcribes it **on this laptop** with
+Whisper (`large-v3-turbo` via faster-whisper, on the NVIDIA GPU if there is one, otherwise the CPU). It's
+free, works offline after a one-time model download, and the audio never leaves the machine.
+
+- The language switch next to the mic cycles **Auto → EN → हिं** (remembered). Auto decodes clearly
+  English speech as English and everything else Hindi-steered, which writes Hindi in Devanagari and
+  keeps English words in Latin letters ("North Zone में secondary sales"); Cooper reads both.
+- Whisper gets a short hint list: "Cooper", the company name, its zones, states, brands and categories,
+  and FMCG terms (PC, TC, UBO, MTD, primary/secondary sales, lakh, crore...). Near-miss names are
+  snapped back ("Figuero" → Figaro) and common mishearings fixed (`backend/data/speech_fixes.json`).
+- No invented words: voice-activity detection drops silence, decoding runs at temperature 0 without
+  carrying text over, low-confidence segments are dropped, and phrases like "thank you for watching"
+  are removed. Pure noise or silence comes back empty.
+- Recording stops after 2.5 s of silence (30 s max). The text then shows in the box for 1 s before
+  it is sent; typing, Esc or "cancel" stops it.
+- While the model loads (a few seconds after start), the mic falls back to the browser's recognition.
+
+Settings (in `.env`, all optional): `COOPER_STT=on|off`, `COOPER_STT_MODEL` (`large-v3-turbo`,
+`medium`, `small`), `COOPER_STT_DEVICE` (`auto`, `cuda`, `cpu`). Check accuracy with
+`python scripts/eval_stt.py` (28 Indian-English, Hinglish and Hindi clips; the report goes to
+`scripts/out/eval_stt.md`).
 
 ## Project layout
 
@@ -118,10 +131,12 @@ backend/app/        FastAPI server and the answer pipeline
   indcal.py         Indian holidays, festivals, seasons and working days
   hindi.py          Hindi / Hinglish / misheard speech -> English, and the Hindi answer line
   smalltalk.py      greetings and small talk
+  stt.py            local Whisper speech-to-text for the mic
 backend/data/       FMCG glossary, Indian calendar, RCA playbook, Hindi lexicon, speech fixes
 backend/tests/      guardrail attacks and all 98 test-sheet questions
 frontend/           React + Framer Motion + Recharts UI
 scripts/eval_98.py  runs the 98 test questions (live or --dry)
+scripts/eval_stt.py speech-to-text accuracy and latency check
 ```
 
 ## Tests

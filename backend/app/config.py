@@ -35,6 +35,11 @@ OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b-instruct")
 LLM_ENABLED = os.getenv("COOPER_LLM", "on").lower() not in ("off", "0", "false", "no")
 
+# Local speech-to-text (Whisper via faster-whisper). The model downloads once, then runs offline.
+STT_ENABLED = os.getenv("COOPER_STT", "on").lower() not in ("off", "0", "false", "no")
+STT_MODEL = os.getenv("COOPER_STT_MODEL", "large-v3-turbo")
+STT_DEVICE = os.getenv("COOPER_STT_DEVICE", "auto")  # auto | cuda | cpu
+
 # Time budget in seconds (interpret 10, query 20, answer 20, hard stop 55).
 BUDGET_INTERPRET = _int("COOPER_BUDGET_INTERPRET", 10)
 BUDGET_QUERY = _int("COOPER_BUDGET_QUERY", 20)

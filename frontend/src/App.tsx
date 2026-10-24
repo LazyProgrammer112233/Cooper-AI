@@ -14,13 +14,14 @@ import {
   Sigma,
   Sun,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ask, getHealth, getVocab, loadSession, saveSession, setFormula, type Company, type Vocab } from "./api";
 import { AnswerCard, type Turn } from "./components/AnswerCard";
 import { Gate } from "./components/Gate";
 import { Orb } from "./components/Orb";
 import { FormulasPanel, GlossaryPanel } from "./components/Panels";
-import { SILENCE_MS, useSpeech, type VoiceLang } from "./components/useSpeech";
+import { makeCorrector, useSpeech } from "./components/useSpeech";
+import { SILENCE_MS, useRecorder, type VoiceMode } from "./components/useRecorder";
 import { greeting } from "./format";
 
 type Tab = "chat" | "formulas" | "glossary";
@@ -57,159 +58,227 @@ function useTheme() {
   return [theme, () => setTheme((t) => (t === "light" ? "dark" : "light"))] as const;
 }
 
-function useVoiceLang() {
-  const [lang, setLang] = useState<VoiceLang>(() => {
+const REVIEW_MS = 1000; // a voice question shows in the box this long before it sends
+const MODES: { id: VoiceMode; label: string; title: string }[] = [
+  { id: "auto", label: "Auto", title: "Voice language: automatic (English, Hindi or Hinglish)" },
+  { id: "en", label: "EN", title: "Voice language: English (India)" },
+  { id: "hi", label: "हिं", title: "Voice language: हिन्दी" },
+];
+
+function useVoiceMode() {
+  const [mode, setMode] = useState<VoiceMode>(() => {
     try {
-      return localStorage.getItem("cooper.voiceLang") === "hi-IN" ? "hi-IN" : "en-IN";
+      const m = localStorage.getItem("cooper.voiceMode");
+      return m === "en" || m === "hi" ? m : "auto";
     } catch {
-      return "en-IN";
+      return "auto";
     }
   });
-  function toggle() {
-    setLang((l) => {
-      const next = l === "en-IN" ? "hi-IN" : "en-IN";
+  function next() {
+    setMode((m) => {
+      const n: VoiceMode = m === "auto" ? "en" : m === "en" ? "hi" : "auto";
       try {
-        localStorage.setItem("cooper.voiceLang", next);
+        localStorage.setItem("cooper.voiceMode", n);
       } catch {
         /* ignore */
       }
-      return next;
+      return n;
     });
   }
-  return [lang, toggle] as const;
+  return [mode, next] as const;
 }
 
-function Composer({ onSend, busy, big, vocab }: { onSend: (q: string) => void; busy: boolean; big?: boolean; vocab: Vocab | null }) {
+function Composer({
+  onSend,
+  busy,
+  big,
+  vocab,
+  token,
+  sttReady,
+}: {
+  onSend: (q: string) => void;
+  busy: boolean;
+  big?: boolean;
+  vocab: Vocab | null;
+  token: string;
+  sttReady: boolean;
+}) {
   const [text, setText] = useState("");
-  const [waiting, setWaiting] = useState(0); // >0 while the 2.5 s auto-send countdown runs (restarts the bar)
-  const [voiceLang, toggleLang] = useVoiceLang();
+  const [review, setReview] = useState(0); // >0 while a voice question waits to send (restarts the bar)
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [mode, nextMode] = useVoiceMode();
   const ref = useRef<HTMLTextAreaElement>(null);
   const prefix = useRef("");
+  const timer = useRef<number | null>(null);
+  const corrector = useMemo(() => makeCorrector(vocab), [vocab]);
 
+  function cancelReview() {
+    if (timer.current) window.clearTimeout(timer.current);
+    timer.current = null;
+    setReview(0);
+  }
   function send(q0?: string) {
     const q = (q0 ?? text).trim();
-    setWaiting(0);
+    cancelReview();
     if (!q || busy) return;
     onSend(q);
     setText("");
   }
-  const join = (t: string) => (prefix.current ? prefix.current + " " : "") + t;
+  const join = (t: string) => ((prefix.current ? prefix.current + " " : "") + t).trim();
+  function heard(t: string, delay: number) {
+    const full = join(corrector.correct(t));
+    setText(full);
+    setReview((n) => n + 1);
+    timer.current = window.setTimeout(() => send(full), delay);
+  }
+
+  // Cooper's own speech model (local Whisper): record, detect the end of speech, transcribe on the laptop
+  const rec = useRecorder({ token, mode, onText: (t) => heard(t, REVIEW_MS), onError: setVoiceError });
+  // Fallback while the model loads or if it can't run: the browser's built-in recognition
   const speech = useSpeech({
-    lang: voiceLang,
+    lang: mode === "hi" ? "hi-IN" : "en-IN",
     vocab,
     onText: (t) => setText(join(t)),
-    onSilence: (on) => setWaiting((n) => (on ? n + 1 : 0)),
-    onDone: (t) => send(join(t)),
+    onSilence: () => undefined,
+    onDone: (t) => heard(t, REVIEW_MS),
   });
+  const useWhisper = sttReady && rec.supported;
+  const canVoice = useWhisper || speech.supported;
+  const recording = useWhisper ? rec.state === "recording" : speech.listening;
+  const transcribing = rec.state === "transcribing";
+
   function toggleMic() {
-    if (speech.listening) {
-      speech.stop();
-      setWaiting(0);
+    setVoiceError(null);
+    if (recording) {
+      if (useWhisper) rec.finish();
+      else speech.stop();
       return;
     }
+    cancelReview();
     prefix.current = text.trim();
-    speech.start();
+    if (useWhisper) void rec.start();
+    else speech.start();
   }
   function cancelVoice() {
-    speech.stop();
-    setWaiting(0);
+    if (useWhisper) rec.cancel();
+    else speech.stop();
+    cancelReview();
   }
+  useEffect(() => () => cancelReview(), []);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     el.style.height = "auto";
     el.style.height = Math.min(el.scrollHeight, 160) + "px";
   }, [text]);
-  const hindiVoice = voiceLang === "hi-IN";
+  const hi = mode === "hi";
+  const modeInfo = MODES.find((m) => m.id === mode)!;
+  const engineNote = useWhisper
+    ? "Transcribed on this laptop by Cooper's own speech model; the audio never leaves it."
+    : "Cooper's speech model isn't ready yet, so the browser's recognition is used (Chrome and Edge send the audio to their speech service).";
+  const left = Math.max(0, SILENCE_MS - rec.silenceFor);
+
   return (
-    <motion.div layout className={`composer ${big ? "composer-big" : ""} ${speech.listening ? "is-listening" : ""}`}>
+    <motion.div layout className={`composer ${big ? "composer-big" : ""} ${recording ? "is-listening" : ""}`}>
       <textarea
         ref={ref}
         rows={1}
         value={text}
         maxLength={500}
-        lang={hindiVoice ? "hi" : "en"}
+        lang={hi ? "hi" : "en"}
+        readOnly={transcribing}
         placeholder={
-          speech.listening
-            ? hindiVoice
-              ? "बोलिए... (Hindi ya Hinglish mein)"
+          recording
+            ? hi
+              ? "बोलिए... (हिन्दी या Hinglish)"
               : "Listening... speak your question"
-            : "Ask in English, Hindi or Hinglish: sales, calls, coverage, or why a number changed..."
+            : transcribing
+              ? "Transcribing..."
+              : "Ask in English, Hindi or Hinglish: sales, calls, coverage, or why a number changed..."
         }
         onChange={(e) => {
-          if (speech.listening) cancelVoice(); // typing takes over: no auto-send
+          cancelReview(); // typing takes over: no auto-send
+          if (recording) cancelVoice();
           setText(e.target.value);
         }}
         onKeyDown={(e) => {
-          if (e.key === "Escape" && speech.listening) {
+          if (e.key === "Escape" && (recording || review)) {
             e.preventDefault();
             cancelVoice();
           } else if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
-            if (speech.listening) speech.stop();
             send();
           }
         }}
       />
       <div className="composer-row">
-        {speech.listening && waiting > 0 ? (
+        {review > 0 ? (
           <span className="hint voice-hint">
-            <span key={waiting} className="voice-bar" style={{ animationDuration: `${SILENCE_MS}ms` }} />
-            {hindiVoice ? "Bhej raha hoon... text badliye ya " : "Sending... edit the text or "}
-            <button className="link-btn" onClick={cancelVoice}>
-              {hindiVoice ? "rokiye" : "cancel"}
+            <span key={review} className="voice-bar" style={{ animationDuration: `${REVIEW_MS}ms` }} />
+            {hi ? "Bhej raha hoon... badliye ya " : "Sending... edit it or "}
+            <button className="link-btn" onClick={cancelReview}>
+              {hi ? "rokiye" : "cancel"}
             </button>
           </span>
-        ) : speech.listening ? (
+        ) : transcribing ? (
           <span className="hint voice-hint">
-            {hindiVoice ? "सुन रहा हूँ (हिन्दी)। रोकने के लिए ■ दबाएँ।" : "Listening in English (India). Click the square to stop."}
+            <span className="spinner tiny" /> {hi ? "Samajh raha hoon..." : "Transcribing on this laptop..."}
           </span>
-        ) : speech.error ? (
-          <span className="hint voice-error" onClick={speech.clearError}>
-            {speech.error}
+        ) : recording ? (
+          <span className="hint voice-hint">
+            {useWhisper && (
+              <span className="level" aria-hidden>
+                {[0.15, 0.35, 0.6, 0.85].map((t) => (
+                  <i key={t} className={rec.level > t ? "on" : ""} />
+                ))}
+              </span>
+            )}
+            {useWhisper && rec.silenceFor > 400
+              ? `${hi ? "Ruk gaye? Bhej raha hoon" : "Stopped talking? Sending in"} ${(left / 1000).toFixed(1)}s · `
+              : `${hi ? "सुन रहा हूँ" : "Listening"} (${modeInfo.label}) · `}
+            <button className="link-btn" onClick={cancelVoice}>
+              {hi ? "रद्द करें" : "cancel"}
+            </button>
+          </span>
+        ) : voiceError || speech.error ? (
+          <span className="hint voice-error" onClick={() => { setVoiceError(null); speech.clearError(); }}>
+            {voiceError || speech.error}
           </span>
         ) : (
-          <span className="hint">Enter to send · Shift+Enter for a new line{speech.supported ? " · or use the mic" : ""}</span>
+          <span className="hint">Enter to send · Shift+Enter for a new line{canVoice ? " · or use the mic" : ""}</span>
         )}
-        {speech.supported && (
+        {canVoice && (
           <button
-            className={`voice-lang ${hindiVoice ? "is-hi" : ""}`}
-            onClick={toggleLang}
-            disabled={speech.listening}
-            title={hindiVoice ? "Voice language: हिन्दी (click for English, India)" : "Voice language: English (India) (click for हिन्दी)"}
-            aria-label={hindiVoice ? "Voice language Hindi, switch to English" : "Voice language English, switch to Hindi"}
+            className={`voice-lang mode-${mode}`}
+            onClick={nextMode}
+            disabled={recording || transcribing}
+            title={`${modeInfo.title}. Click to switch (Auto → English → हिन्दी).`}
+            aria-label={`${modeInfo.title}. Switch voice language`}
           >
-            {hindiVoice ? "हिं" : "EN"}
+            {modeInfo.label}
           </button>
         )}
-        {speech.supported && (
+        {canVoice && (
           <motion.button
-            className={`mic ${speech.listening ? "on" : ""}`}
+            className={`mic ${recording ? "on" : ""} ${useWhisper ? "local" : "browser"}`}
             whileHover={{ scale: 1.06 }}
             whileTap={{ scale: 0.94 }}
-            disabled={busy}
+            disabled={busy || transcribing}
             onClick={toggleMic}
-            aria-label={speech.listening ? "Stop listening" : "Speak your question"}
-            title={
-              speech.listening
-                ? "Stop listening"
-                : `Speak your question (${hindiVoice ? "हिन्दी" : "English, India"}). It sends after 2.5 seconds of silence. ` +
-                  "Chrome and Edge send the audio to their speech service to turn it into text."
-            }
+            style={recording && useWhisper ? ({ "--lvl": rec.level } as React.CSSProperties) : undefined}
+            aria-label={recording ? "Stop and send" : "Speak your question"}
+            title={recording ? "Stop now and transcribe" : `Speak your question (${modeInfo.title.replace("Voice language: ", "")}). ${engineNote}`}
           >
-            {speech.listening && <span className="mic-pulse" />}
-            {speech.listening ? <Square size={14} fill="currentColor" /> : <Mic size={18} />}
+            {recording && <span className="mic-pulse" />}
+            {transcribing ? <span className="spinner small" /> : recording ? <Square size={14} fill="currentColor" /> : <Mic size={18} />}
           </motion.button>
         )}
         <motion.button
           className="send"
           whileHover={{ scale: 1.06 }}
           whileTap={{ scale: 0.94 }}
-          disabled={!text.trim() || busy}
-          onClick={() => {
-            if (speech.listening) speech.stop();
-            send();
-          }}
+          disabled={!text.trim() || busy || transcribing}
+          onClick={() => send()}
           aria-label="Send"
         >
           {busy ? <span className="spinner" /> : <ArrowUp size={18} />}
@@ -228,12 +297,26 @@ export default function App() {
   const [sideOpen, setSideOpen] = useState(() => window.innerWidth > 900);
   const [llmOk, setLlmOk] = useState<boolean | null>(null);
   const [vocab, setVocab] = useState<Vocab | null>(null);
+  const [sttReady, setSttReady] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    getHealth()
-      .then((h) => setLlmOk(h.llm.ok))
-      .catch(() => setLlmOk(null));
+    // The speech model loads in the background after the server starts: check until it's ready
+    let stop = false;
+    let tries = 0;
+    const check = () =>
+      getHealth()
+        .then((h) => {
+          setLlmOk(h.llm.ok);
+          const st = h.stt?.state;
+          setSttReady(st === "ready");
+          if (!stop && (st === "loading" || st === "off" || !st) && tries++ < 120) window.setTimeout(check, 5000);
+        })
+        .catch(() => setLlmOk(null));
+    check();
+    return () => {
+      stop = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -434,7 +517,7 @@ export default function App() {
               </AnimatePresence>
             </div>
             <div className="dock">
-              <Composer onSend={send} busy={busy} big={empty} vocab={vocab} />
+              <Composer onSend={send} busy={busy} big={empty} vocab={vocab} token={session.token} sttReady={sttReady} />
               <p className="disclaimer">Cooper answers only from {company.name}'s Pulse data. Check important numbers in Pulse.</p>
             </div>
           </>

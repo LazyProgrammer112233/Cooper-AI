@@ -228,7 +228,15 @@ export async function disconnectMcp(): Promise<McpStatus> {
   return r.json();
 }
 
-export async function getHealth(): Promise<{ llm: { ok: boolean; model?: string }; mcp: McpStatus }> {
+export interface SttStatus {
+  enabled: boolean;
+  state: "off" | "loading" | "ready" | "error";
+  model: string;
+  device: string;
+  error: string | null;
+}
+
+export async function getHealth(): Promise<{ llm: { ok: boolean; model?: string }; mcp: McpStatus; stt?: SttStatus }> {
   const r = await fetch("/api/health");
   return r.json();
 }

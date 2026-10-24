@@ -28,7 +28,8 @@ _STRONG = {"kyu", "kyun", "kyon", "kyoon", "dikhao", "batao", "bataiye", "dikhai
            "pichle", "pichhle", "hafte", "mahine", "kaunsa", "konsa", "kaun", "chahiye", "nikalo", "bikri", "girawat",
            "giravat", "dukaan", "vitrak", "kaise", "mein", "hain", "galat", "dikkat", "aaj", "zyada", "jyada", "kya",
            "kal", "tak", "saal", "sunao", "gaana", "karo", "saare", "sabhi", "naye", "wale", "sudhare", "badhaye",
-           "kyunki", "hafta", "mahina", "bikri", "tulna", "kaisa"}
+           "kyunki", "hafta", "mahina", "bikri", "tulna", "kaisa", "mahinye", "mahene", "dikhhao", "sudaare",
+           "sudhare", "hesaap", "hisaab", "bikari"}
 _WEAK = {"hai", "ka", "ki", "ke", "kam", "wala", "wali", "raha", "rahe", "rahi", "gaya", "gayi", "mera", "meri",
          "mere", "hamare", "hamari", "tak", "se", "aur", "din", "saal", "bhi", "toh", "ko", "par", "ho", "tha", "thi"}
 

@@ -6,3 +6,7 @@ sqlglot==25.34.1
 pydantic>=2.9,<3
 python-dotenv>=1.0
 pytest>=8
+# Local speech-to-text (voice input). The CUDA wheels are only needed for the GPU; without them it runs on CPU.
+faster-whisper>=1.1
+nvidia-cublas-cu12; sys_platform == "win32" or sys_platform == "linux"
+nvidia-cudnn-cu12>=9,<10; sys_platform == "win32" or sys_platform == "linux"

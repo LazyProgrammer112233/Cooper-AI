@@ -459,3 +459,12 @@ tr:hover td { background: var(--hover); }
 .mic { margin-left: auto; }
 .voice-lang ~ .mic { margin-left: 0; }
 .summary-hi { margin: -2px 0 8px; font-size: 14px; color: var(--text-2); padding-left: 10px; border-left: 3px solid var(--brand-3); }
+.voice-lang.mode-auto { color: var(--text-2); }
+.voice-lang.mode-en { color: var(--brand-ink); border-color: var(--brand-3); background: var(--brand-soft); }
+.voice-lang.mode-hi { color: var(--brand-ink); border-color: var(--brand-3); background: var(--brand-soft); }
+.level { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; }
+.level i { display: block; width: 3px; border-radius: 2px; background: var(--border-2); }
+.level i:nth-child(1) { height: 5px; } .level i:nth-child(2) { height: 8px; } .level i:nth-child(3) { height: 11px; } .level i:nth-child(4) { height: 14px; }
+.level i.on { background: var(--danger); }
+.mic.on.local { box-shadow: 0 0 0 calc(var(--lvl, 0) * 10px) rgba(239, 68, 68, 0.25); transition: box-shadow 0.08s; }
+.spinner.tiny { width: 11px; height: 11px; border-width: 2px; border-color: var(--border-2); border-top-color: var(--brand-2); }

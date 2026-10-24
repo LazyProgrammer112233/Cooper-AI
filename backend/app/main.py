@@ -13,12 +13,12 @@ import json
 from datetime import date
 from pathlib import Path
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import config, glossary, hindi, pipeline, prefs
+from . import config, glossary, hindi, pipeline, prefs, stt
 from .catalog import METRICS
 from .guard import GuardViolation, check_sql, sign_company, verify_company_token
 from .llm import LocalLLM
@@ -31,6 +31,11 @@ FRONTEND = Path(__file__).resolve().parents[2] / "frontend" / "dist"
 
 _llm = LocalLLM()
 _mcp = PulseMCP()
+
+
+@app.on_event("startup")
+async def _load_speech_model():
+    stt.engine.start()  # background thread: the server answers right away, voice is ready a little later
 
 
 class VerifyIn(BaseModel):
@@ -175,32 +180,69 @@ async def set_formula(body: FormulaIn, x_company_token: str | None = Header(defa
 _VOCAB: dict[int, tuple[float, list[str]]] = {}
 
 
+async def _company_names(ctx: pipeline.CompanyCtx) -> list[str]:
+    """The locked company's zone / region / state / city / brand / category names (guarded queries, cached 30 min)."""
+    import time
+    hit = _VOCAB.get(ctx.id)
+    if hit and time.monotonic() - hit[0] < 1800:
+        return hit[1]
+    names: list[str] = []
+    try:
+        async with _mcp.session() as session:
+            for dim in ("zone", "region", "state", "brand", "category", "city"):
+                rows = await pipeline._query(session, build_member_list(ctx.id, dim, limit=60), ctx.id, timeout=10)
+                names += [n for n in (str(r.get("name") or "").strip() for r in rows) if len(n) >= 2 and not n.isdigit()]
+        names = list(dict.fromkeys(names + [ctx.name]))
+        _VOCAB[ctx.id] = (time.monotonic(), names)
+    except Exception:  # vocab is a nicety: never block the mic on it
+        names = [ctx.name]
+    return names
+
+
 @app.get("/api/vocab")
 async def vocab(x_company_token: str | None = Header(default=None)):
     """Words the voice input should favour: this company's names, FMCG terms, Hindi words, speech fixes."""
     ctx = _ctx(x_company_token)
-    import time
-    hit = _VOCAB.get(ctx.id)
-    names: list[str] = []
-    if hit and time.monotonic() - hit[0] < 1800:
-        names = hit[1]
-    else:
-        try:
-            async with _mcp.session() as session:
-                for dim in ("zone", "region", "state", "city", "brand", "category"):
-                    rows = await pipeline._query(session, build_member_list(ctx.id, dim, limit=60), ctx.id, timeout=10)
-                    names += [n for n in (str(r.get("name") or "").strip() for r in rows)
-                              if len(n) >= 2 and not n.isdigit()]
-            names = sorted(set(names) | {ctx.name})
-            _VOCAB[ctx.id] = (time.monotonic(), names)
-        except Exception:  # vocab is a nicety: never block the mic on it
-            names = [ctx.name]
+    names = sorted(set(await _company_names(ctx)))
     terms = sorted({t.term for t in glossary.terms()} | {a for t in glossary.terms() for a in t.aliases}
                    | {m.label for m in METRICS.values()})
     lx = hindi.lexicon()
     words = sorted({k for key in ("phrases", "words", "roman_only", "places") for k in lx[key]})
     fixes = json.loads((config.DATA_DIR / "speech_fixes.json").read_text(encoding="utf-8"))["fixes"]
     return {"names": names, "terms": terms, "hindi": words, "fixes": fixes}
+
+
+AUDIO_TYPES = ("audio/webm", "audio/ogg", "audio/wav", "audio/x-wav", "audio/wave", "audio/mpeg", "audio/mp4",
+               "application/octet-stream")
+
+
+@app.post("/api/transcribe")
+async def transcribe(request: Request, mode: str = "auto", x_company_token: str | None = Header(default=None)):
+    """Voice question -> text with local Whisper, biased towards Cooper, the locked company's names and FMCG terms."""
+    ctx = _ctx(x_company_token)
+    if mode not in ("auto", "en", "hi"):
+        raise HTTPException(400, "mode must be auto, en or hi")
+    ctype = (request.headers.get("content-type") or "").split(";")[0].strip().lower()
+    if ctype and ctype not in AUDIO_TYPES:
+        raise HTTPException(415, "Send the recording as WebM/Opus, Ogg or WAV audio.")
+    if int(request.headers.get("content-length") or 0) > stt.MAX_BYTES:
+        raise HTTPException(413, "Recording is too large (2 MB max, about 30 seconds).")
+    data = await request.body()
+    if len(data) > stt.MAX_BYTES:
+        raise HTTPException(413, "Recording is too large (2 MB max, about 30 seconds).")
+    if not data:
+        raise HTTPException(400, "Empty recording.")
+    if stt.engine.state != "ready":
+        raise HTTPException(503, f"The speech model is {stt.engine.state}." + (" " + stt.engine.error if stt.engine.error else ""))
+    try:
+        res = await stt.engine.transcribe(data, mode, ctx.name, await _company_names(ctx))
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except Exception as exc:  # corrupt audio and the like
+        raise HTTPException(400, f"Couldn't read that recording ({type(exc).__name__}).") from exc
+    res["raw"] = res["text"]
+    res["text"] = hindi.fix_speech(res["text"])
+    return res
 
 
 @app.get("/api/glossary")
@@ -211,7 +253,8 @@ async def get_glossary():
 @app.get("/api/health")
 async def health():
     llm = await _llm.health()
-    return {"ok": True, "llm": llm, "mcp": {**pulse_auth.status(), "static_token": bool(config.PULSE_MCP_TOKEN)}}
+    return {"ok": True, "llm": llm, "mcp": {**pulse_auth.status(), "static_token": bool(config.PULSE_MCP_TOKEN)},
+            "stt": stt.engine.status()}
 
 
 if FRONTEND.exists():
