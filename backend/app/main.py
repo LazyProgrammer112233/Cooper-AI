@@ -18,12 +18,13 @@ from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import config, glossary, pipeline, prefs
+from . import config, glossary, hindi, pipeline, prefs
 from .catalog import METRICS
 from .guard import GuardViolation, check_sql, sign_company, verify_company_token
 from .llm import LocalLLM
 from .mcp_auth import auth as pulse_auth
 from .mcp_client import DataError, PulseMCP
+from .sqlbuild import build_member_list
 
 app = FastAPI(title="Cooper AI", docs_url=None, redoc_url=None)
 FRONTEND = Path(__file__).resolve().parents[2] / "frontend" / "dist"
@@ -167,6 +168,37 @@ async def set_formula(body: FormulaIn, x_company_token: str | None = Header(defa
         raise HTTPException(400, f"Unknown formula: {exc}") from exc
     pipeline._CACHE.clear()
     return {"saved": saved}
+
+
+_VOCAB: dict[int, tuple[float, list[str]]] = {}
+
+
+@app.get("/api/vocab")
+async def vocab(x_company_token: str | None = Header(default=None)):
+    """Words the voice input should favour: this company's names, FMCG terms, Hindi words, speech fixes."""
+    ctx = _ctx(x_company_token)
+    import time
+    hit = _VOCAB.get(ctx.id)
+    names: list[str] = []
+    if hit and time.monotonic() - hit[0] < 1800:
+        names = hit[1]
+    else:
+        try:
+            async with _mcp.session() as session:
+                for dim in ("zone", "region", "state", "city", "brand", "category"):
+                    rows = await pipeline._query(session, build_member_list(ctx.id, dim, limit=60), ctx.id, timeout=10)
+                    names += [n for n in (str(r.get("name") or "").strip() for r in rows)
+                              if len(n) >= 2 and not n.isdigit()]
+            names = sorted(set(names) | {ctx.name})
+            _VOCAB[ctx.id] = (time.monotonic(), names)
+        except Exception:  # vocab is a nicety: never block the mic on it
+            names = [ctx.name]
+    terms = sorted({t.term for t in glossary.terms()} | {a for t in glossary.terms() for a in t.aliases}
+                   | {m.label for m in METRICS.values()})
+    lx = hindi.lexicon()
+    words = sorted({k for key in ("phrases", "words", "roman_only", "places") for k in lx[key]})
+    fixes = json.loads((config.DATA_DIR / "speech_fixes.json").read_text(encoding="utf-8"))["fixes"]
+    return {"names": names, "terms": terms, "hindi": words, "fixes": fixes}
 
 
 @app.get("/api/glossary")

@@ -147,6 +147,11 @@ export function AnswerCard({
                   part.startsWith("**") ? <b key={i}>{part.slice(2, -2)}</b> : <span key={i}>{part}</span>,
                 )}
               </p>
+              {a.summary_hi && (
+                <p className="summary-hi" lang={a.lang === "hi" ? "hi" : "hi-Latn"}>
+                  {a.summary_hi}
+                </p>
+              )}
               {a.summary_by === "llm" && (
                 <div className="byline">
                   <Sparkles size={12} /> Worded by the local model; every number was checked against the data.
@@ -212,6 +217,12 @@ export function AnswerCard({
                         exit={{ height: 0, opacity: 0 }}
                       >
                         <dl>
+                          {a.how.understood_as && (
+                            <>
+                              <dt>Understood as</dt>
+                              <dd>{a.how.understood_as}</dd>
+                            </>
+                          )}
                           <dt>Period</dt>
                           <dd>{a.how.period}</dd>
                           <dt>Filters</dt>

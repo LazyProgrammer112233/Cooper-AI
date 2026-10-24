@@ -85,14 +85,18 @@ def verify_company_token(token: str) -> dict:
 _INJECTION = re.compile(
     r"ignore (all |your |the |previous |prior )*(instructions|rules|guardrails)|system prompt|"
     r"you are now|act as|jailbreak|developer mode|reveal (your|the) (prompt|instructions)|"
-    r"\b(drop|delete|truncate|insert|update|alter|grant)\s+(table|from|into|database)\b|;\s*select|--|/\*",
+    r"\b(drop|delete|truncate|insert|update|alter|grant)\s+(table|from|into|database)\b|;\s*select|--|/\*|"
+    r"\b(bh?ool|bhul) ja(o|ao|iye)\b|\bbhula do\b|\bignore kar(o|do|iye)\b|\bniyam tod|"
+    r"\b(instructions?|nirdesh|rules?) (bhool|bhul|ignore|hata)|भूल जाओ|निर्देश",
     re.I,
 )
 _OTHER_COMPANY = re.compile(
     r"\b(other|another|different|competitor'?s?|rival)\s+(companies|company|clients?|customers? companies|tenants?)\b|"
     r"\b(all|every|each)\s+(the\s+)?(companies|company|tenants?)\b|"
     r"\bcompany\s*(id)?\s*[:#=]?\s*\d{3,}\b|\bclient\s*id\b|\btenant\b|\blist (of )?(all )?(companies|clients)\b|"
-    r"\bswitch (to )?(company|client)\b|\bcompare (us |our \w+ )?with (company|client)\b",
+    r"\bswitch (to )?(company|client)\b|\bcompare (us |our \w+ )?with (company|client)\b|"
+    r"\b(dusri|doosri|dusre|doosre|anya|baaki|sabhi|saari|sab) (company|companies|kampani|client)\b|"
+    r"दूसरी कंपनी|अन्य कंपनी|सभी कंपनियों",
     re.I,
 )
 

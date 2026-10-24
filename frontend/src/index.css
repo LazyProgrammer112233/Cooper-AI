@@ -402,7 +402,7 @@ tr:hover td { background: var(--hover); }
 .gate .skeleton { width: 100%; }
 
 /* ---------- voice input ---------- */
-.mic { position: relative; margin-left: auto; width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center; color: var(--brand-ink); background: var(--brand-soft); border: 1px solid var(--border); }
+.mic { position: relative; width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center; color: var(--brand-ink); background: var(--brand-soft); border: 1px solid var(--border); }
 .mic + .send { margin-left: 8px; }
 .mic:disabled { opacity: 0.5; }
 .mic.on { color: #fff; background: var(--danger); border-color: transparent; }
@@ -452,3 +452,10 @@ tr:hover td { background: var(--hover); }
 .rca-action ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; color: var(--text-2); display: flex; flex-direction: column; gap: 4px; }
 .rca-foot { margin: 8px 0 0; font-size: 11.5px; color: var(--muted); }
 .rca .table-wrap { max-height: none; margin-top: 0; }
+.voice-lang { margin-left: auto; margin-right: 6px; height: 28px; min-width: 38px; padding: 0 8px; border-radius: 9px; font-size: 12px; font-weight: 700; color: var(--text-2); background: var(--surface-2); border: 1px solid var(--border); }
+.voice-lang.is-hi { color: var(--brand-ink); border-color: var(--brand-3); background: var(--brand-soft); }
+.voice-lang:disabled { opacity: 0.6; }
+.voice-lang + .mic { margin-left: 0; }
+.mic { margin-left: auto; }
+.voice-lang ~ .mic { margin-left: 0; }
+.summary-hi { margin: -2px 0 8px; font-size: 14px; color: var(--text-2); padding-left: 10px; border-left: 3px solid var(--brand-3); }

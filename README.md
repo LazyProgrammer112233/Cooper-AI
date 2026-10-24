@@ -79,12 +79,31 @@ Every number comes from guarded Pulse queries (about 15 to 20, run in parallel, 
 The answer text is a template. The local model can reword it (`COOPER_RCA_LLM=on`), but this is off by
 default: small models flip causes around while keeping the numbers, which the number check can't catch.
 
+## Hindi and Hinglish
+
+Ask in English, Hindi (Devanagari) or Hinglish: "is hafte PC kitna hai", "pichle mahine ki primary sale
+dikhao", "sabse kam coverage wala zone kaunsa hai", "Maharashtra mein kitne distributor hain",
+"इस हफ्ते मेरे प्रोडक्टिव कॉल्स कम क्यों हैं". `backend/app/hindi.py` turns these into the English the parser
+reads, using `backend/data/hindi_lexicon.json` (question words, verbs, time, FMCG terms, Devanagari spellings
+of English words, Indian states and cities, number words; editable). Unknown Devanagari names are
+transliterated so they can still be matched against the company's masters. The guardrails check both the
+original and the translated text. Answers stay in English, plus one Hindi line built from the same
+numbers, and "How I got this" shows what Cooper understood.
+
+Greetings and small talk ("hi Cooper", "namaste", "kaise ho", "thanks", "bahut kaam hai") get a warm
+reply in the same language without touching any data. A greeting with a question ("kaise ho Cooper,
+aaj PC kam aa raha hai") gets a one-line hello and then the normal answer.
+
 ## Voice input
 
-Click the mic in the message box and speak (English, India). The words appear as you talk, and the
-question is sent about 1.5 s after you stop. Edit the text, press Esc or click "cancel" to stop it
-being sent. This uses the browser's Web Speech API, so it works in Chrome, Edge and Safari; Chrome and
-Edge send the audio to their speech service. The mic is hidden in browsers without it.
+Click the mic in the message box and speak. The switch next to it chooses English (India) or Hindi;
+the choice is remembered. Listening carries on through short pauses, and the question is sent after
+2.5 s of silence. Edit the text, press Esc or click "cancel" to stop it being sent. For accuracy with
+Indian accents, Cooper asks the browser for up to five guesses per phrase and picks the one that best
+matches FMCG terms, Hindi words and the company's zone, state, brand and category names. It then fixes
+common mishearings ("productive cause" → productive calls, "you be oh" → UBO;
+`backend/data/speech_fixes.json`). This uses the browser's Web Speech API, so it works in Chrome, Edge
+and Safari; Chrome and Edge send the audio to their speech service.
 
 ## Project layout
 
@@ -97,7 +116,9 @@ backend/app/        FastAPI server and the answer pipeline
   pipeline.py       interpret -> query -> answer, chart choice, formula notes
   rca.py            "why" questions: comparison windows, driver tree, contributors, playbook
   indcal.py         Indian holidays, festivals, seasons and working days
-backend/data/       FMCG glossary, Indian calendar, RCA playbook
+  hindi.py          Hindi / Hinglish / misheard speech -> English, and the Hindi answer line
+  smalltalk.py      greetings and small talk
+backend/data/       FMCG glossary, Indian calendar, RCA playbook, Hindi lexicon, speech fixes
 backend/tests/      guardrail attacks and all 98 test-sheet questions
 frontend/           React + Framer Motion + Recharts UI
 scripts/eval_98.py  runs the 98 test questions (live or --dry)

@@ -15,12 +15,12 @@ import {
   Sun,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { ask, getHealth, loadSession, saveSession, setFormula, type Company } from "./api";
+import { ask, getHealth, getVocab, loadSession, saveSession, setFormula, type Company, type Vocab } from "./api";
 import { AnswerCard, type Turn } from "./components/AnswerCard";
 import { Gate } from "./components/Gate";
 import { Orb } from "./components/Orb";
 import { FormulasPanel, GlossaryPanel } from "./components/Panels";
-import { useSpeech } from "./components/useSpeech";
+import { SILENCE_MS, useSpeech, type VoiceLang } from "./components/useSpeech";
 import { greeting } from "./format";
 
 type Tab = "chat" | "formulas" | "glossary";
@@ -32,10 +32,9 @@ const CHIPS = [
   "Top 10 brands by secondary sales",
   "Show UBO for last month",
   "Why are my productive calls low this week?",
-  "What are sales reps doing wrong?",
+  "Is hafte PC kam kyun hai?",
 ];
 
-const AUTO_SEND_MS = 1500;
 
 function useTheme() {
   const [theme, setTheme] = useState<"light" | "dark">(() => {
@@ -58,50 +57,70 @@ function useTheme() {
   return [theme, () => setTheme((t) => (t === "light" ? "dark" : "light"))] as const;
 }
 
-function Composer({ onSend, busy, big }: { onSend: (q: string) => void; busy: boolean; big?: boolean }) {
+function useVoiceLang() {
+  const [lang, setLang] = useState<VoiceLang>(() => {
+    try {
+      return localStorage.getItem("cooper.voiceLang") === "hi-IN" ? "hi-IN" : "en-IN";
+    } catch {
+      return "en-IN";
+    }
+  });
+  function toggle() {
+    setLang((l) => {
+      const next = l === "en-IN" ? "hi-IN" : "en-IN";
+      try {
+        localStorage.setItem("cooper.voiceLang", next);
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }
+  return [lang, toggle] as const;
+}
+
+function Composer({ onSend, busy, big, vocab }: { onSend: (q: string) => void; busy: boolean; big?: boolean; vocab: Vocab | null }) {
   const [text, setText] = useState("");
-  const [pending, setPending] = useState(false); // voice question about to be sent
+  const [waiting, setWaiting] = useState(0); // >0 while the 2.5 s auto-send countdown runs (restarts the bar)
+  const [voiceLang, toggleLang] = useVoiceLang();
   const ref = useRef<HTMLTextAreaElement>(null);
   const prefix = useRef("");
-  const timer = useRef<number | null>(null);
 
-  function cancelAuto() {
-    if (timer.current) window.clearTimeout(timer.current);
-    timer.current = null;
-    setPending(false);
-  }
   function send(q0?: string) {
     const q = (q0 ?? text).trim();
-    cancelAuto();
+    setWaiting(0);
     if (!q || busy) return;
     onSend(q);
     setText("");
   }
+  const join = (t: string) => (prefix.current ? prefix.current + " " : "") + t;
   const speech = useSpeech({
-    onText: (t) => setText((prefix.current ? prefix.current + " " : "") + t),
-    onDone: (t) => {
-      // Stopped talking: send after a short pause, unless the user edits or cancels first.
-      const full = ((prefix.current ? prefix.current + " " : "") + t).trim();
-      setPending(true);
-      timer.current = window.setTimeout(() => send(full), AUTO_SEND_MS);
-    },
+    lang: voiceLang,
+    vocab,
+    onText: (t) => setText(join(t)),
+    onSilence: (on) => setWaiting((n) => (on ? n + 1 : 0)),
+    onDone: (t) => send(join(t)),
   });
   function toggleMic() {
     if (speech.listening) {
       speech.stop();
+      setWaiting(0);
       return;
     }
-    cancelAuto();
     prefix.current = text.trim();
     speech.start();
   }
-  useEffect(() => () => cancelAuto(), []);
+  function cancelVoice() {
+    speech.stop();
+    setWaiting(0);
+  }
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     el.style.height = "auto";
     el.style.height = Math.min(el.scrollHeight, 160) + "px";
   }, [text]);
+  const hindiVoice = voiceLang === "hi-IN";
   return (
     <motion.div layout className={`composer ${big ? "composer-big" : ""} ${speech.listening ? "is-listening" : ""}`}>
       <textarea
@@ -109,39 +128,59 @@ function Composer({ onSend, busy, big }: { onSend: (q: string) => void; busy: bo
         rows={1}
         value={text}
         maxLength={500}
-        placeholder={speech.listening ? "Listening... speak your question" : "Ask about sales, calls, coverage, or why a number changed..."}
+        lang={hindiVoice ? "hi" : "en"}
+        placeholder={
+          speech.listening
+            ? hindiVoice
+              ? "बोलिए... (Hindi ya Hinglish mein)"
+              : "Listening... speak your question"
+            : "Ask in English, Hindi or Hinglish: sales, calls, coverage, or why a number changed..."
+        }
         onChange={(e) => {
-          cancelAuto();
+          if (speech.listening) cancelVoice(); // typing takes over: no auto-send
           setText(e.target.value);
         }}
         onKeyDown={(e) => {
-          if (e.key === "Escape" && (pending || speech.listening)) {
+          if (e.key === "Escape" && speech.listening) {
             e.preventDefault();
-            speech.stop();
-            cancelAuto();
+            cancelVoice();
           } else if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
+            if (speech.listening) speech.stop();
             send();
           }
         }}
       />
       <div className="composer-row">
-        {pending ? (
+        {speech.listening && waiting > 0 ? (
           <span className="hint voice-hint">
-            <span className="voice-bar" style={{ animationDuration: `${AUTO_SEND_MS}ms` }} />
-            Sending... edit the text or{" "}
-            <button className="link-btn" onClick={cancelAuto}>
-              cancel
+            <span key={waiting} className="voice-bar" style={{ animationDuration: `${SILENCE_MS}ms` }} />
+            {hindiVoice ? "Bhej raha hoon... text badliye ya " : "Sending... edit the text or "}
+            <button className="link-btn" onClick={cancelVoice}>
+              {hindiVoice ? "rokiye" : "cancel"}
             </button>
           </span>
         ) : speech.listening ? (
-          <span className="hint voice-hint">Listening in English (India). Click the square to stop.</span>
+          <span className="hint voice-hint">
+            {hindiVoice ? "सुन रहा हूँ (हिन्दी)। रोकने के लिए ■ दबाएँ।" : "Listening in English (India). Click the square to stop."}
+          </span>
         ) : speech.error ? (
           <span className="hint voice-error" onClick={speech.clearError}>
             {speech.error}
           </span>
         ) : (
           <span className="hint">Enter to send · Shift+Enter for a new line{speech.supported ? " · or use the mic" : ""}</span>
+        )}
+        {speech.supported && (
+          <button
+            className={`voice-lang ${hindiVoice ? "is-hi" : ""}`}
+            onClick={toggleLang}
+            disabled={speech.listening}
+            title={hindiVoice ? "Voice language: हिन्दी (click for English, India)" : "Voice language: English (India) (click for हिन्दी)"}
+            aria-label={hindiVoice ? "Voice language Hindi, switch to English" : "Voice language English, switch to Hindi"}
+          >
+            {hindiVoice ? "हिं" : "EN"}
+          </button>
         )}
         {speech.supported && (
           <motion.button
@@ -154,7 +193,8 @@ function Composer({ onSend, busy, big }: { onSend: (q: string) => void; busy: bo
             title={
               speech.listening
                 ? "Stop listening"
-                : "Speak your question (English, India). Chrome and Edge send the audio to their speech service to turn it into text."
+                : `Speak your question (${hindiVoice ? "हिन्दी" : "English, India"}). It sends after 2.5 seconds of silence. ` +
+                  "Chrome and Edge send the audio to their speech service to turn it into text."
             }
           >
             {speech.listening && <span className="mic-pulse" />}
@@ -166,7 +206,10 @@ function Composer({ onSend, busy, big }: { onSend: (q: string) => void; busy: bo
           whileHover={{ scale: 1.06 }}
           whileTap={{ scale: 0.94 }}
           disabled={!text.trim() || busy}
-          onClick={() => send()}
+          onClick={() => {
+            if (speech.listening) speech.stop();
+            send();
+          }}
           aria-label="Send"
         >
           {busy ? <span className="spinner" /> : <ArrowUp size={18} />}
@@ -184,6 +227,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [sideOpen, setSideOpen] = useState(() => window.innerWidth > 900);
   const [llmOk, setLlmOk] = useState<boolean | null>(null);
+  const [vocab, setVocab] = useState<Vocab | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -191,6 +235,12 @@ export default function App() {
       .then((h) => setLlmOk(h.llm.ok))
       .catch(() => setLlmOk(null));
   }, []);
+
+  useEffect(() => {
+    // Company names and FMCG words the voice input should favour (fetched once per company)
+    setVocab(null);
+    if (session) getVocab(session.token).then(setVocab).catch(() => setVocab(null));
+  }, [session?.token]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -384,7 +434,7 @@ export default function App() {
               </AnimatePresence>
             </div>
             <div className="dock">
-              <Composer onSend={send} busy={busy} big={empty} />
+              <Composer onSend={send} busy={busy} big={empty} vocab={vocab} />
               <p className="disclaimer">Cooper answers only from {company.name}'s Pulse data. Check important numbers in Pulse.</p>
             </div>
           </>

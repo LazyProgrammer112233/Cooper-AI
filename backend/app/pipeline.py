@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Any, AsyncIterator
 
-from . import config, fmt, glossary, prefs, rca
+from . import config, fmt, glossary, hindi, prefs, rca, smalltalk
 from .catalog import DIM_LABELS, GEO_DIMS, METRICS, SOURCES, TIME_GRAINS, pick_variant
 from .entities import _match, resolve
 from .guard import REFUSALS, GuardViolation, check_rows, check_sql, gate_question, other_brand_in
@@ -489,6 +489,9 @@ async def run(question: str, ctx: CompanyCtx, *, llm: LocalLLM | None = None, mc
     llm = llm or LocalLLM()
     mcp = mcp or PulseMCP()
     timings: dict[str, float] = {}
+    raw = question
+    lang = "en"
+    greeting = ""  # a warm first line when the question came with a hello
 
     def left() -> float:
         return config.BUDGET_TOTAL - (time.monotonic() - started)
@@ -497,16 +500,45 @@ async def run(question: str, ctx: CompanyCtx, *, llm: LocalLLM | None = None, mc
         timings["total"] = round(time.monotonic() - started, 2)
         answer["timings"] = timings
         answer["company"] = {"id": ctx.id, "name": ctx.name}
-        answer["question"] = question
+        answer["question"] = raw
+        answer["lang"] = lang
+        if greeting and answer.get("kind") not in ("refusal", "error"):
+            answer["summary"] = f"{greeting} {answer['summary']}"
+        if hindi.is_hindi(lang) and answer.get("kind") != "help":
+            line = hindi.summary_line(answer, lang, ctx.name)
+            if line:
+                answer["summary_hi"] = line
+        if question.strip().lower() != raw.strip().lower():
+            if answer.get("how"):
+                answer["how"]["understood_as"] = question
+            elif answer.get("kind") not in ("help", "refusal"):
+                answer.setdefault("notes", []).append(f"Understood as: \"{question}\"")
         return {"type": "answer", "answer": answer}
 
     # ---------------- 1. interpret
     yield {"type": "stage", "stage": "interpret", "status": "start"}
     t = time.monotonic()
-    reason = gate_question(question, ctx.id, company_name=ctx.name)
+    # Greetings and small talk get a warm reply before any guardrail or data query.
+    st = smalltalk.analyse(raw)
+    if st.pure and not (gate_question(raw, ctx.id, company_name=ctx.name)
+                        or gate_question(hindi.normalize(raw)[0], ctx.id, company_name=ctx.name)):
+        lang = st.lang
+        text, chips = smalltalk.reply(st, ctx.name, raw)
+        yield {"type": "stage", "stage": "interpret", "status": "done", "detail": "Small talk"}
+        yield finish(_simple_answer("help", text, suggestions=chips))
+        return
+    work = raw
+    if st.found and smalltalk.has_question(st):
+        work, greeting = st.rest, smalltalk.prefix(st)
+    # Hindi / Hinglish / misheard speech -> the English the parser reads. The gate checks both texts.
+    question, lang = hindi.normalize(work)
+    if st.found and hindi.is_hindi(st.lang):
+        lang = st.lang if lang == "en" else lang
+    reason = gate_question(raw, ctx.id, company_name=ctx.name) or gate_question(question, ctx.id, company_name=ctx.name)
     if reason:
         yield {"type": "stage", "stage": "interpret", "status": "done", "detail": "Blocked by guardrail"}
-        text = REFUSALS[reason].format(company=ctx.name, name=(other_brand_in(question, ctx.name) or "").title())
+        name = other_brand_in(raw, ctx.name) or other_brand_in(question, ctx.name) or ""
+        text = REFUSALS[reason].format(company=ctx.name, name=name.title())
         yield finish(_simple_answer("refusal", text, suggestions=HELP_SUGGESTIONS[:3]))
         return
     today = ctx.today

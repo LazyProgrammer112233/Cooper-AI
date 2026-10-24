@@ -36,6 +36,8 @@ export interface Answer {
   question: string;
   summary: string;
   summary_by?: "template" | "llm";
+  summary_hi?: string;
+  lang?: "en" | "hi" | "hinglish";
   headline?: string | null;
   chart: null | {
     type: "kpi" | "bar" | "hbar" | "pie" | "table";
@@ -56,6 +58,7 @@ export interface Answer {
     interpreted_by: string;
     queries: number;
     sql: string[];
+    understood_as?: string;
   };
   timings?: Record<string, number>;
   rca?: Rca;
@@ -227,5 +230,18 @@ export async function disconnectMcp(): Promise<McpStatus> {
 
 export async function getHealth(): Promise<{ llm: { ok: boolean; model?: string }; mcp: McpStatus }> {
   const r = await fetch("/api/health");
+  return r.json();
+}
+
+export interface Vocab {
+  names: string[];
+  terms: string[];
+  hindi: string[];
+  fixes: [string, string][];
+}
+
+export async function getVocab(token: string): Promise<Vocab> {
+  const r = await fetch("/api/vocab", { headers: { "X-Company-Token": token } });
+  if (!r.ok) throw new Error(await errorText(r));
   return r.json();
 }
