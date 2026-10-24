@@ -135,11 +135,13 @@ async def chat(body: ChatIn, x_company_token: str | None = Header(default=None))
         try:
             async for ev in pipeline.run(body.question, ctx, llm=_llm, mcp=_mcp):
                 yield f"data: {json.dumps(ev, default=str)}\n\n"
-        except asyncio.CancelledError:
+        except (asyncio.CancelledError, KeyboardInterrupt, SystemExit):
             raise
-        except Exception as exc:  # never leak a stack trace to the page
-            err = {"type": "answer", "answer": {"kind": "error", "summary": f"Something went wrong: {type(exc).__name__}.",
-                                                "question": body.question}}
+        except BaseException as exc:  # never leak a stack trace or cut the stream (MCP can raise exception groups)
+            err = {"type": "answer", "answer": {
+                "kind": "error", "question": body.question, "chart": None, "table": None, "formula_notes": [],
+                "notes": [], "terms": [], "suggestions": [body.question],
+                "summary": f"Something went wrong while getting the data ({type(exc).__name__}). Please ask again."}}
             yield f"data: {json.dumps(err)}\n\n"
 
     return StreamingResponse(stream(), media_type="text/event-stream",
