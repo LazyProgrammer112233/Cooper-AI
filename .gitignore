@@ -5,6 +5,7 @@ node_modules/
 frontend/dist/
 .env
 backend/data/prefs/
+backend/data/learned_metrics.json
 .pytest_cache/
 *.log
 scripts/out/

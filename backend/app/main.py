@@ -18,7 +18,7 @@ from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import config, glossary, hindi, pipeline, prefs, stt
+from . import config, glossary, hindi, learn, pipeline, prefs, stt
 from .catalog import METRICS
 from .guard import GuardViolation, check_sql, sign_company, verify_company_token
 from .llm import LocalLLM
@@ -44,6 +44,11 @@ class VerifyIn(BaseModel):
 
 class ChatIn(BaseModel):
     question: str = Field(min_length=1, max_length=500)
+
+
+class LearnedIn(BaseModel):
+    index: int | None = None
+    formula: dict | None = None
 
 
 class FormulaIn(BaseModel):
@@ -243,6 +248,35 @@ async def transcribe(request: Request, mode: str = "auto", x_company_token: str 
     res["raw"] = res["text"]
     res["text"] = hindi.fix_speech(res["text"])
     return res
+
+
+@app.get("/api/learned")
+async def get_learned(x_company_token: str | None = Header(default=None)):
+    """Metrics Cooper learned for this company, with their formula options."""
+    ctx = _ctx(x_company_token)
+    return {"learned": [learn.describe(e) for e in learn.learned(ctx.id).values()]}
+
+
+@app.post("/api/learned/{key}")
+async def correct_learned(key: str, body: LearnedIn, x_company_token: str | None = Header(default=None)):
+    """Correct a learned formula: pick one of the alternatives, or give one in the formula language."""
+    ctx = _ctx(x_company_token)
+    try:
+        entry = learn.choose(ctx.id, key, index=body.index, formula=body.formula)
+    except KeyError as exc:
+        raise HTTPException(404, "No such learned metric or option.") from exc
+    except learn.FormulaError as exc:
+        raise HTTPException(400, f"That formula isn't allowed: {exc}") from exc
+    pipeline._CACHE.clear()
+    return {"learned": learn.describe(entry)}
+
+
+@app.delete("/api/learned/{key}")
+async def forget_learned(key: str, x_company_token: str | None = Header(default=None)):
+    ctx = _ctx(x_company_token)
+    if not learn.forget(ctx.id, key):
+        raise HTTPException(404, "No such learned metric.")
+    return {"ok": True}
 
 
 @app.get("/api/glossary")

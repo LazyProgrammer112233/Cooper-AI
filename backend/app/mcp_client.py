@@ -17,7 +17,9 @@ from typing import Any
 
 from . import config
 
-ALLOWED_TOOLS = frozenset({"ch_query"})
+# Read-only tools only: SQL reads (always through the guard) and FieldAssist's own business docs, used to learn
+# metrics Cooper doesn't know yet. Write tools, code search and knowledge tools are never called.
+ALLOWED_TOOLS = frozenset({"ch_query", "docs_search", "docs_get_report", "docs_get_page"})
 
 
 class DataError(Exception):

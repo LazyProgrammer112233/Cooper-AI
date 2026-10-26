@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Any, AsyncIterator
 
-from . import analyst, config, fmt, glossary, hindi, prefs, rca, smalltalk
+from . import analyst, config, fmt, glossary, hindi, learn, prefs, rca, smalltalk
 from .catalog import DIM_LABELS, GEO_DIMS, METRICS, SOURCES, TIME_GRAINS, pick_variant
 from .entities import _match, resolve
 from .guard import REFUSALS, GuardViolation, check_rows, check_sql, gate_question, other_brand_in
@@ -492,6 +492,7 @@ async def run(question: str, ctx: CompanyCtx, *, llm: LocalLLM | None = None, mc
     raw = question
     lang = "en"
     greeting = ""  # a warm first line when the question came with a hello
+    learned_info: dict | None = None  # a metric Cooper learned from the FieldAssist docs
 
     def left() -> float:
         return config.BUDGET_TOTAL - (time.monotonic() - started)
@@ -508,6 +509,8 @@ async def run(question: str, ctx: CompanyCtx, *, llm: LocalLLM | None = None, mc
             line = hindi.summary_line(answer, lang, ctx.name)
             if line:
                 answer["summary_hi"] = line
+        if learned_info:
+            answer["learned"] = learned_info
         if question.strip().lower() != raw.strip().lower():
             if answer.get("how"):
                 answer["how"]["understood_as"] = question
@@ -548,8 +551,36 @@ async def run(question: str, ctx: CompanyCtx, *, llm: LocalLLM | None = None, mc
         yield finish(_simple_answer("refusal", text, suggestions=HELP_SUGGESTIONS[:3]))
         return
     today = ctx.today
+    # A metric this company taught Cooper before, or one it doesn't know yet: learn it from the FieldAssist docs
+    forced_metric = None
+    entry = learn.find_learned(question, ctx.id)
+    unknown = None if entry else learn.find_unknown(raw if not hindi.is_hindi(lang) else question)
+    if entry or unknown:
+        if not entry:
+            yield {"type": "stage", "stage": "interpret", "status": "done", "detail": f"Looking up \"{unknown}\" in FieldAssist docs"}
+            try:
+                async with mcp.session() as session:
+                    entry = await asyncio.wait_for(learn.learn(session, unknown, ctx.id, ctx.name, llm), timeout=learn.DOC_BUDGET + 4)
+            except (asyncio.TimeoutError, DataError) as exc:
+                entry = None
+                if isinstance(exc, DataError):
+                    yield finish(_simple_answer("error", f"I couldn't reach Pulse to look up \"{unknown}\": {exc}"))
+                    return
+        if entry:
+            learned_info = learn.describe(entry)
+            if not entry.get("alternatives"):
+                text = (f"**{entry['term']}** isn't something I can calculate from {ctx.name}'s Pulse data yet. "
+                        + (f"What it means: {entry['definition']} " if entry.get("definition") else "")
+                        + (f"({entry['source']}.) " if entry.get("source") else "")
+                        + f"Calculating it needs {entry.get('missing') or 'data that Pulse does not hold'} for {ctx.name}, "
+                        "and I won't guess a number.")
+                ans = _simple_answer("glossary", text, suggestions=HELP_SUGGESTIONS[:3])
+                ans["notes"] = list(entry.get("flags", []))
+                yield finish(ans)
+                return
+            forced_metric = learn.register(ctx.id, entry)
     stripped = "\n".join(_strip_company(ln, ctx.name) for ln in question.splitlines() if ln.strip()) or question
-    if analyst.is_analysis(stripped):
+    if not forced_metric and analyst.is_analysis(stripped):
         aplan = analyst.parse_analysis(stripped, today, ctx.fy_start_month)
         if aplan.why and not aplan.sections and aplan.refs and rca.FAMILY.get(analyst.why_metric(aplan)) and                 not any(r.a in ("inactive_outlets", "active_outlets", "new_outlets") for r in aplan.refs[:1]):
             # "why did primary fall in North, and which 5 distributors caused most of it": the root cause engine, scoped
@@ -566,6 +597,12 @@ async def run(question: str, ctx: CompanyCtx, *, llm: LocalLLM | None = None, mc
             yield finish(ev) if ev.get("kind") else ev
         return
     plan = parse(_strip_company(question, ctx.name), today, ctx.fy_start_month)
+    if forced_metric:
+        plan.intent = "data"
+        plan.metrics = [forced_metric]
+        if plan.shape not in ("value", "trend", "breakdown", "ranking", "compare_periods"):
+            plan.shape = "value"
+        plan.notes.append(f"{learned_info['term']} is a learned metric: {learned_info['label']}.")
     if plan.intent == "data" and needs_llm(plan):
         data = await llm.interpret(question, timeout=max(2.0, config.BUDGET_INTERPRET - (time.monotonic() - t)))
         if data:
