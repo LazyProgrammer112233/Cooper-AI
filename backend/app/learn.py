@@ -472,7 +472,13 @@ async def learn(session, term: str, company_id: int, company: str, llm=None) -> 
             valid.append(f)
         except FormulaError:
             continue
-    definition = (doc.definition if doc and doc.definition else "") or (tpl["definition"] if tpl else "")
+    doc_def = doc.definition if doc and doc.definition else ""
+    defines = re.search(r"(?i)\b" + re.escape(term.split()[0]) + r"\b[^.]{0,40}?\b(is|are|means|measures|shows|=|:)\s", doc_def[:160])
+    if doc_def and not defines and tpl:
+        doc_def = ""  # the doc only mentions the term in passing: the built-in definition is clearer
+    definition = doc_def or (tpl["definition"] if tpl else "")
+    if term.isalpha() and len(term) <= 6 and term.lower() == term and template_for(term) and term.upper() in ("OTIF", "WOD", "MSL", "SEC"):
+        term = term.upper()
     entry = {
         "slug": slug(term), "term": term, "aliases": (tpl["aliases"] if tpl else []), "unit": (tpl or {}).get("unit", "number"),
         "definition": definition, "source": (doc.source if doc else "Cooper's FMCG playbook (no matching FieldAssist doc found)"),
