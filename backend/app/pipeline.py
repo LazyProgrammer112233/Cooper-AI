@@ -602,6 +602,15 @@ async def run(question: str, ctx: CompanyCtx, *, llm: LocalLLM | None = None, mc
         plan.metrics = [forced_metric]
         if plan.shape not in ("value", "trend", "breakdown", "ranking", "compare_periods"):
             plan.shape = "value"
+        variant = METRICS[forced_metric].default
+        dropped = [d for d in plan.dims if d not in TIME_GRAINS and not variant.supports(d)]
+        if dropped:
+            # "must-sell SKU %": "SKU" is part of the metric's name, and the formula can't be split by it anyway
+            plan.dims = [d for d in plan.dims if d not in dropped]
+            if not plan.dims and plan.shape in ("breakdown", "ranking"):
+                plan.shape = "value"
+            plan.notes.append(f"{learned_info['term']} can't be split by "
+                              f"{', '.join(DIM_LABELS.get(d, d).lower() for d in dropped)} with the data Pulse has, so this is the total.")
         plan.notes.append(f"{learned_info['term']} is a learned metric: {learned_info['label']}.")
     if plan.intent == "data" and needs_llm(plan):
         data = await llm.interpret(question, timeout=max(2.0, config.BUDGET_INTERPRET - (time.monotonic() - t)))

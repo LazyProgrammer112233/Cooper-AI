@@ -198,7 +198,7 @@ def template_for(term: str) -> dict | None:
 
 # --------------------------------------------------------------------------- spotting an unknown metric
 
-_SUFFIX = re.compile(r"\b((?:[a-z][a-z\-]*\s){0,3}?[a-z][a-z\-]*)\s*(rate|ratio|%|percentage|score|index|compliance|cuts?)\b")
+_SUFFIX = re.compile(r"\b((?:[a-z][a-z\-]*\s){0,3}?[a-z][a-z\-]*)\s*(rate|ratio|%|percentage|score|index|compliance|cuts?|purity)\b")
 _ACRONYM = re.compile(r"\b([A-Z]{2,6})\b")
 _KNOWN_ACRONYMS = {"PC", "TC", "UBO", "MTD", "LMTD", "YTD", "QTD", "LPC", "UTC", "UPC", "SKU", "PJP", "ECO", "DB", "SS", "ABV", "AOV",
                    "FY", "GST", "MRP", "PTR", "ISR", "DSR", "ASM", "RSM", "ZSM", "NSM", "UP", "MP", "AP", "TN", "WB", "HP", "CG",

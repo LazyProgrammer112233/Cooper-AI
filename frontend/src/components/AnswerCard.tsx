@@ -158,6 +158,30 @@ export function AnswerCard({
                 </div>
               )}
 
+              {a.learned && (
+                <div className={`learned ${a.learned.mappable ? "" : "learned-off"}`}>
+                  <div className="learned-head">
+                    <span className="learned-badge">
+                      <Sparkles size={12} /> Learned metric
+                    </span>
+                    <b>{a.learned.term}</b>
+                    {a.learned.corrected && <em>· your formula</em>}
+                  </div>
+                  {a.learned.definition && <p>{a.learned.definition}</p>}
+                  {a.learned.mappable && (
+                    <p>
+                      <b>Formula used:</b> {a.learned.label}: {a.learned.formula}
+                    </p>
+                  )}
+                  {a.learned.doc_formula && (
+                    <p className="muted small">
+                      <b>FieldAssist docs:</b> {a.learned.doc_formula}
+                    </p>
+                  )}
+                  <p className="muted small">Source: {a.learned.source}. You can correct or forget it in the Formulas tab.</p>
+                </div>
+              )}
+
               {a.rca && <RcaView rca={a.rca} />}
 
               {chart && !a.rca && (

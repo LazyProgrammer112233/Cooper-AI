@@ -70,6 +70,7 @@ export interface Answer {
   }[];
   timings?: Record<string, number>;
   rca?: Rca;
+  learned?: Learned;
 }
 
 export interface RcaTable {
@@ -260,4 +261,39 @@ export async function getVocab(token: string): Promise<Vocab> {
   const r = await fetch("/api/vocab", { headers: { "X-Company-Token": token } });
   if (!r.ok) throw new Error(await errorText(r));
   return r.json();
+}
+
+export interface Learned {
+  term: string;
+  slug: string;
+  definition: string;
+  source: string;
+  doc_formula: string;
+  formula: string;
+  label: string;
+  mappable: boolean;
+  flags: string[];
+  alternatives: { label: string; text: string }[];
+  chosen: number;
+  corrected: boolean;
+}
+
+export async function getLearned(token: string): Promise<Learned[]> {
+  const r = await fetch("/api/learned", { headers: { "X-Company-Token": token } });
+  if (!r.ok) throw new Error(await errorText(r));
+  return (await r.json()).learned;
+}
+
+export async function correctLearned(token: string, slug: string, body: { index?: number; formula?: unknown }) {
+  const r = await fetch(`/api/learned/${encodeURIComponent(slug)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Company-Token": token },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(await errorText(r));
+}
+
+export async function forgetLearned(token: string, slug: string) {
+  const r = await fetch(`/api/learned/${encodeURIComponent(slug)}`, { method: "DELETE", headers: { "X-Company-Token": token } });
+  if (!r.ok) throw new Error(await errorText(r));
 }
