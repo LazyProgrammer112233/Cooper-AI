@@ -80,6 +80,8 @@ class PulseMCP:
             async with streamablehttp_client(self.url, headers=_headers(), timeout=30, auth=oauth) as (read, write, _):
                 async with ClientSession(read, write) as session:
                     await session.initialize()
+                    if oauth is not None:
+                        auth.mark_ok()
                     try:
                         yield _Session(session)
                     except BaseException as exc:  # the caller's own error (guard, timeout): pass it on unchanged
@@ -94,6 +96,7 @@ class PulseMCP:
                 raise
             msg = _short(exc)
             if _is_not_connected(exc, NotConnected):
+                auth.mark_expired()
                 raise DataError("Your Pulse MCP sign-in has expired. Click \"Connect and authorize Pulse MCP\" again.") from exc
             raise DataError(f"Could not reach Pulse MCP at {self.url}: {msg}") from exc
 
