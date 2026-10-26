@@ -468,3 +468,12 @@ tr:hover td { background: var(--hover); }
 .level i.on { background: var(--danger); }
 .mic.on.local { box-shadow: 0 0 0 calc(var(--lvl, 0) * 10px) rgba(239, 68, 68, 0.25); transition: box-shadow 0.08s; }
 .spinner.tiny { width: 11px; height: 11px; border-width: 2px; border-color: var(--border-2); border-top-color: var(--brand-2); }
+
+/* ---------- analyst answers ---------- */
+.answer-section { margin-top: 14px; padding: 12px 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); }
+.answer-section h4 { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 13.5px; }
+.sec-num { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: var(--brand-ink); background: var(--brand-soft); }
+.summary.small { font-size: 14px; margin: 0 0 8px; }
+.answer-section .viz { margin: 0; }
+tr.is-match td { background: var(--brand-soft); font-weight: 600; }
+.constraints { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 2px; }

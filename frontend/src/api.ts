@@ -59,7 +59,15 @@ export interface Answer {
     queries: number;
     sql: string[];
     understood_as?: string;
+    constraints?: string[];
   };
+  sections?: {
+    title: string;
+    summary: string;
+    chart: Answer["chart"];
+    table: Answer["table"];
+    notes: string[];
+  }[];
   timings?: Record<string, number>;
   rca?: Rca;
 }

@@ -76,7 +76,7 @@ export function DataTable({ table }: { table: NonNullable<Answer["table"]> }) {
         </thead>
         <tbody>
           {table.rows.map((r, i) => (
-            <tr key={i}>
+            <tr key={i} className={r.match === "✓" ? "is-match" : undefined}>
               {table.columns.map((c) => (
                 <td key={c.key} className={c.unit ? "num" : ""}>
                   {c.unit ? fmtValue(r[c.key], c.unit) : String(r[c.key] ?? "–")}

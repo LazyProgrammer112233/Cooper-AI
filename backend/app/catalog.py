@@ -380,6 +380,12 @@ _add(Metric("inactive_outlets", "Inactive outlets", "count", (
             {"v": Component("outlets", "count()", "IsBlocked = 1")}, pulse_kpi="InactiveOutlets"),
 ), higher_is_better=False, glossary_term="Inactive Outlets"))
 
+_add(Metric("inactive_outlets_pct", "Inactive outlets %", "percent", (
+    Variant("blocked_share", "Blocked / All outlets", "Outlets marked blocked / All outlets in the outlet master x 100",
+            {"blocked": Component("outlets", "count()", "IsBlocked = 1"), "all": Component("outlets", "count()")},
+            ratio("blocked", "all")),
+), higher_is_better=False))
+
 _add(Metric("new_outlets", "New outlets added", "count", (
     Variant("created", "Outlets created", "Count of outlets added to the outlet master in the period",
             {"v": Component("outlets_created", "count()")}),
@@ -411,6 +417,130 @@ _add(Metric("drop_size", "Drop size (avg bill value)", "currency", (
              "inv": Component("sds_invoice", "uniqExact(InvoiceId)")},
             ratio("val", "inv", 1.0), pulse_kpi="DropSize"),
 ), glossary_term="Drop Size"))
+
+
+# ---------------------------------------------------------------------------
+# Discipline and field-productivity metrics, from salesmen's daily performance rows
+# (EmployeeDayPerformance: one row per rep per day). A "market day" is a day with at least one call.
+# ---------------------------------------------------------------------------
+
+_LOCAL = "((toUnixTimestamp({col}) + {{tz_seconds}}) % 86400)"
+_MARKET_DAYS = "toFloat64(countIf(TotalTC > 0))"
+
+
+def _edp(name: str, expr: str, where: str = "") -> dict[str, Component]:
+    return {name: Component("edp", expr, where)}
+
+
+_add(Metric("market_days", "Market days (rep-days)", "count", (
+    Variant("market_days", "Rep-days with calls", "Count of rep-days with at least one call",
+            _edp("v", _MARKET_DAYS)),
+), glossary_term="Market Days"))
+
+_add(Metric("working_reps", "Reps in market", "count", (
+    Variant("reps_with_calls", "Reps with calls", "Count of distinct sales reps who made at least one call",
+            _edp("v", "toFloat64(uniqExactIf(FieldUserId, TotalTC > 0))")),
+), glossary_term="Active Reps"))
+
+_add(Metric("calls_per_day", "Calls per rep per day", "number", (
+    Variant("tc_per_market_day", "TC / Market days", "Total calls / Rep-days with calls (daily summaries)",
+            {"tc": Component("edp", S("TotalTC")), "days": Component("edp", _MARKET_DAYS)},
+            ratio("tc", "days", 1.0)),
+), glossary_term="Calls per Day"))
+
+_add(Metric("pc_per_day", "Productive calls per rep per day", "number", (
+    Variant("pc_per_market_day", "PC / Market days", "Productive calls / Rep-days with calls (daily summaries)",
+            {"pc": Component("edp", S("TotalPC")), "days": Component("edp", _MARKET_DAYS)},
+            ratio("pc", "days", 1.0)),
+)))
+
+_add(Metric("zero_order_days", "Zero-order days", "count", (
+    Variant("calls_no_orders", "Days with calls but no orders", "Count of rep-days with calls but no productive call",
+            _edp("v", "toFloat64(countIf(TotalTC > 0 AND TotalPC = 0))")),
+), higher_is_better=False, glossary_term="Zero Order Days"))
+
+_add(Metric("leave_absent_days", "Leave / absent days", "count", (
+    Variant("leave_or_absent", "Leave or absent", "Count of rep-days marked Leave or Absent",
+            _edp("v", "toFloat64(countIf(IsAbsent = 1 OR toString(DayStartType) = 'Leave'))")),
+), higher_is_better=False))
+
+_add(Metric("holiday_leave_days", "Holiday and leave days", "count", (
+    Variant("holiday_or_leave", "Holiday or leave", "Count of rep-days marked Holiday, Leave or Weekly off",
+            _edp("v", "toFloat64(countIf(toString(DayStartType) IN ('Holiday', 'Leave', 'WeeklyOff')))")),
+), higher_is_better=False))
+
+_add(Metric("avg_last_call_time", "Avg. last call time", "time", (
+    Variant("last_call", "Average last call time", "Average of each rep's last call time on market days, local time",
+            _edp("v", "avgOrNull(" + _LOCAL.format(col="LastCallTime") + ")", "LastCallTime IS NOT NULL AND TotalTC > 0")),
+)))
+
+_add(Metric("avg_day_start_time", "Avg. day start time", "time", (
+    Variant("day_start", "Average day start time", "Average time reps started their day in the app, local time",
+            _edp("v", "avgOrNull(" + _LOCAL.format(col="DayStartTime") + ")", "IsDayNotStarted = 0 AND TotalTC > 0")),
+)))
+
+_add(Metric("time_in_market", "Avg. time in market (min)", "number", (
+    Variant("retailing_minutes", "Retailing minutes per market day", "Average minutes spent retailing per rep-day with calls",
+            _edp("v", "avgOrNull(TimeSpentRetailinginMinutes)", "TotalTC > 0")),
+)))
+
+_add(Metric("tour_plan_adherence_pct", "Tour plan adherence %", "percent", (
+    Variant("adhered_days", "Days on plan / Market days", "Rep-days that followed the tour plan / Rep-days with calls x 100",
+            {"ok": Component("edp", "toFloat64(countIf(IsTourPlanAdhered = 1))", "TotalTC > 0"),
+             "days": Component("edp", _MARKET_DAYS)}, ratio("ok", "days")),
+), glossary_term="PJP Adherence"))
+
+# Metrics with a number in them ("first call after 11 AM", "days with at least 25 calls"). The catalog keeps
+# them with a default filled in; the analyst asks for another value with with_param(metric_id, value)
+# (seconds of the day, or a call count).
+PARAM_METRICS: dict[str, tuple[Variant, float]] = {}
+
+
+def _fill(variant: Variant, value: float) -> Variant:
+    comps = {k: Component(c.source, c.expr.replace("@N@", str(int(round(value)))), c.where)
+             for k, c in variant.components.items()}
+    return Variant(variant.id, variant.label, variant.formula, comps, variant.combine, variant.pulse_kpi)
+
+
+def _param(m: Metric, default: float) -> None:
+    PARAM_METRICS[m.id] = (m.variants[0], default)
+    _add(Metric(m.id, m.label, m.unit, (_fill(m.variants[0], default),), m.ambiguous, m.higher_is_better,
+                m.glossary_term))
+
+
+def with_param(metric_id: str, value: float | None) -> Variant:
+    """The parameterised metric's formula with the number from the question (an integer literal in the SQL)."""
+    template, default = PARAM_METRICS[metric_id]
+    return _fill(template, default if value is None else value)
+
+
+_param(Metric("late_start_days", "Late-start days", "count", (
+    Variant("first_call_after", "Days with first call after a time", "Count of market days whose first call was after the given time",
+            _edp("v", "toFloat64(countIf(" + _LOCAL.format(col="FirstCallTime") + " > @N@))",
+                 "FirstCallTime IS NOT NULL AND TotalTC > 0")),
+), higher_is_better=False), 10.5 * 3600)
+
+_param(Metric("early_end_days", "Early-finish days", "count", (
+    Variant("last_call_before", "Days with last call before a time", "Count of market days whose last call was before the given time",
+            _edp("v", "toFloat64(countIf(" + _LOCAL.format(col="LastCallTime") + " < @N@))",
+                 "LastCallTime IS NOT NULL AND TotalTC > 0")),
+), higher_is_better=False), 16 * 3600)
+
+_param(Metric("early_start_days", "Early-start days", "count", (
+    Variant("day_start_before", "Days started before a time", "Count of market days started before the given time",
+            _edp("v", "toFloat64(countIf(" + _LOCAL.format(col="DayStartTime") + " < @N@))",
+                 "IsDayNotStarted = 0 AND TotalTC > 0")),
+)), 9.5 * 3600)
+
+_param(Metric("days_min_calls", "Days with enough calls", "count", (
+    Variant("days_at_least_n_calls", "Days with at least N calls", "Count of rep-days with at least the given number of calls",
+            _edp("v", "toFloat64(countIf(TotalTC >= @N@))")),
+)), 25)
+
+_param(Metric("low_call_days", "Low-call days", "count", (
+    Variant("days_under_n_calls", "Days with fewer than N calls", "Count of market days with fewer than the given number of calls",
+            _edp("v", "toFloat64(countIf(TotalTC > 0 AND TotalTC < @N@))")),
+), higher_is_better=False), 10)
 
 
 def metric_supports(metric_id: str, variant_id: str | None, dim: str | None) -> bool:

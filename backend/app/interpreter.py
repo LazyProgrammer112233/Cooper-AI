@@ -192,6 +192,9 @@ def _find_grain(t: str) -> str | None:
 
 
 _DIM_WORDS = r"(zone|region|territory|terittory|state|city|category|brand|sku|distributor|outlet|retailer|division|hq)"
+# Words that start a ranking or a generic phrase, never a name: "top 10", "bottom 5", "each", "their"
+RANKING_NAME = re.compile(r"^(top|bottom|best|worst|highest|lowest|leading|weakest|least|most|first|last|each|every|"
+                          r"any|our|my|their|these|those|which|what|other|remaining)\b|^\d+(\s|$)")
 
 
 def _extract_filters(t: str) -> tuple[list[RawFilter], str, str | None]:
@@ -220,8 +223,8 @@ def _extract_filters(t: str) -> tuple[list[RawFilter], str, str | None]:
             dim = {"terittory": "territory", "retailer": "outlet", "division": "brand", "hq": "territory"}.get(dim_word, dim_word)
             name = re.sub(r"\b(product|products|all|the)\b", " ", name).strip()
             if name in ("all", "each", "every", "", "active", "inactive", "our", "my", "total", "available", "new", "by") \
-                    or name.startswith("all "):
-                continue
+                    or name.startswith("all ") or RANKING_NAME.match(name):
+                continue  # "top 10 distributors" is a ranking, never a name to look up
             if PLACEHOLDER.fullmatch(name) or PLACEHOLDER.search(name):
                 placeholder_dim = placeholder_dim or dim
                 work = _blank(work, m.start(), m.end())

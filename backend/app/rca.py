@@ -286,7 +286,8 @@ Query = Callable[[Any, str, int, float], Awaitable[list[dict]]]
 
 
 async def analyse(session, query: Query, *, ctx, metric_id: str, period: Period, filters: list[Filter],
-                  saved: dict[str, str], question: str, budget: float, extra_notes: list[str]) -> dict:
+                  saved: dict[str, str], question: str, budget: float, extra_notes: list[str],
+                  contrib_dims: list[str] | None = None, contrib_n: int = 5) -> dict:
     cid = ctx.id
     today = ctx.today
     w = windows(period, today)
@@ -330,7 +331,8 @@ async def analyse(session, query: Query, *, ctx, metric_id: str, period: Period,
         for tag, per in (("cur", w.cur), ("prev", w.prev)):
             tasks[f"x_{m}_{tag}"] = build_metric(cid, v2, [], per, filters, tz_offset_minutes=ctx.tz_offset).sql
     contrib_variants = {}
-    for dim in CONTRIB_DIMS[family]:
+    dims_wanted = list(dict.fromkeys((contrib_dims or []) + CONTRIB_DIMS[family]))
+    for dim in dims_wanted:
         if dim in filter_dims:
             continue
         v3, _ = pick_variant(metric_id, saved.get(metric_id), [dim] + filter_dims)
@@ -585,7 +587,7 @@ async def analyse(session, query: Query, *, ctx, metric_id: str, period: Period,
         rows1, rows0 = got.get(f"c_{dim}_cur"), got.get(f"c_{dim}_prev")
         if rows1 is None or rows0 is None:
             continue
-        block = _contrib(dim, v3, rows1, rows0, unit, sign or -1, v1, v0)
+        block = _contrib(dim, v3, rows1, rows0, unit, sign or -1, v1, v0, contrib_n)
         if block["rows"]:
             contributors.append(block)
     concentrated = next((c for c in contributors if c["dim"] in ("zone", "region") and c.get("top_share", 0) >= 0.6), None)
@@ -767,7 +769,7 @@ def _holiday_dates(daily: list[dict], p: Period) -> list[date]:
 
 
 def _contrib(dim: str, variant, rows1: list[dict], rows0: list[dict], unit: str, sign: int,
-             v1: float | None, v0: float | None) -> dict:
+             v1: float | None, v0: float | None, n: int = 5) -> dict:
     """Members that moved the metric most, in the direction it moved."""
     def index(rows):
         return {r.get("k0"): r for r in rows if r.get("k0") not in (None, 0, "")}
@@ -804,7 +806,7 @@ def _contrib(dim: str, variant, rows1: list[dict], rows0: list[dict], unit: str,
         items = list(merged.values())
     want_down = sign < 0
     items.sort(key=lambda x: x["delta"] if want_down else -x["delta"])
-    top = [x for x in items if (x["delta"] < 0 if want_down else x["delta"] > 0)][:5]
+    top = [x for x in items if (x["delta"] < 0 if want_down else x["delta"] > 0)][:max(1, n)]
     total_delta = (v1 - v0) if (v1 is not None and v0 is not None and unit in ("currency", "count")) else None
     share = None
     if total_delta and top:

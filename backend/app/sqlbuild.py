@@ -83,7 +83,9 @@ def build_component(
     limit: int | None = None,
     key_in: Filter | None = None,
     with_names: bool = True,
+    pair: tuple[Period, Period] | None = None,
 ) -> BuiltQuery:
+    """`pair` (current, earlier) reads both periods in one pass: the key "_pp" says which one a row belongs to."""
     cid = int(company_id)
     src = SOURCES[component.source]
 
@@ -94,7 +96,11 @@ def build_component(
     if src.date_expr:
         extra_cols.append(f"{src.date_expr} AS _dk")
     inner_where = [f"{src.company_col} = {cid}"]
-    if src.date_expr and period is not None:
+    if src.date_expr and pair is not None:
+        cur, prev = pair
+        inner_where.append(f"(({src.date_expr} BETWEEN {cur.start_key} AND {cur.end_key}) OR "
+                           f"({src.date_expr} BETWEEN {prev.start_key} AND {prev.end_key}))")
+    elif src.date_expr and period is not None:
         inner_where.append(f"{src.date_expr} BETWEEN {period.start_key} AND {period.end_key}")
     if src.base_where:
         inner_where.append(f"({src.base_where})")
@@ -133,7 +139,11 @@ def build_component(
     joins: list[str] = []
     geo_joined = False
     for i, k in enumerate(keys):
-        if k in TIME_GRAINS:
+        if k == "_pp":
+            if pair is None or not src.date_expr:
+                raise ValueError(f"{src.id} cannot be split by period")
+            key_exprs.append(f"if(s._dk >= {pair[0].start_key}, 'cur', 'prev') AS k{i}")
+        elif k in TIME_GRAINS:
             key_exprs.append(f"{_date_bucket(k)} AS k{i}")
         elif k in ("state", "city"):
             if k in src.dims:
@@ -200,6 +210,7 @@ def build_metric(
     limit: int | None = None,
     key_in: Filter | None = None,
     min_denominator: int | None = None,
+    pair: tuple[Period, Period] | None = None,
 ) -> BuiltQuery:
     """One SQL per metric: components joined on their keys, the formula applied, names attached.
 
@@ -210,7 +221,7 @@ def build_metric(
     ignored: list[Filter] = []
     for name, comp in variant.components.items():
         q = build_component(cid, comp, keys, period, filters, tz_offset_minutes=tz_offset_minutes,
-                            key_in=key_in, with_names=False)
+                            key_in=key_in, with_names=False, pair=pair)
         ignored += [f for f in q.ignored_filters if f not in ignored]
         parts.append((name, q.sql))
 

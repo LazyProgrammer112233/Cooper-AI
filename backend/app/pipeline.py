@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Any, AsyncIterator
 
-from . import config, fmt, glossary, hindi, prefs, rca, smalltalk
+from . import analyst, config, fmt, glossary, hindi, prefs, rca, smalltalk
 from .catalog import DIM_LABELS, GEO_DIMS, METRICS, SOURCES, TIME_GRAINS, pick_variant
 from .entities import _match, resolve
 from .guard import REFUSALS, GuardViolation, check_rows, check_sql, gate_question, other_brand_in
@@ -531,7 +531,13 @@ async def run(question: str, ctx: CompanyCtx, *, llm: LocalLLM | None = None, mc
     if st.found and smalltalk.has_question(st):
         work, greeting = st.rest, smalltalk.prefix(st)
     # Hindi / Hinglish / misheard speech -> the English the parser reads. The gate checks both texts.
-    question, lang = hindi.normalize(work)
+    if "\n" in work.strip():
+        # a multi-line ask: keep the lines apart so numbered parts stay numbered
+        parts = [hindi.normalize(ln) for ln in work.splitlines() if ln.strip()]
+        question = "\n".join(p[0] for p in parts)
+        lang = next((p[1] for p in parts if p[1] != "en"), "en")
+    else:
+        question, lang = hindi.normalize(work)
     if st.found and hindi.is_hindi(st.lang):
         lang = st.lang if lang == "en" else lang
     reason = gate_question(raw, ctx.id, company_name=ctx.name) or gate_question(question, ctx.id, company_name=ctx.name)
@@ -542,6 +548,23 @@ async def run(question: str, ctx: CompanyCtx, *, llm: LocalLLM | None = None, mc
         yield finish(_simple_answer("refusal", text, suggestions=HELP_SUGGESTIONS[:3]))
         return
     today = ctx.today
+    stripped = "\n".join(_strip_company(ln, ctx.name) for ln in question.splitlines() if ln.strip()) or question
+    if analyst.is_analysis(stripped):
+        aplan = analyst.parse_analysis(stripped, today, ctx.fy_start_month)
+        if aplan.why and not aplan.sections and aplan.refs and rca.FAMILY.get(analyst.why_metric(aplan)) and                 not any(r.a in ("inactive_outlets", "active_outlets", "new_outlets") for r in aplan.refs[:1]):
+            # "why did primary fall in North, and which 5 distributors caused most of it": the root cause engine, scoped
+            mid = analyst.why_metric(aplan)
+            rplan = Plan(intent="rca", metrics=[mid], period=aplan.period, filters=aplan.filters, notes=list(aplan.notes))
+            timings["interpret"] = round(time.monotonic() - t, 2)
+            async for ev in _run_rca(rplan, ctx, question, llm, mcp, timings, left, use_llm_summary,
+                                     contrib_dims=aplan.contrib_dims or ([aplan.entity] if aplan.entity else None),
+                                     contrib_n=aplan.contrib_n):
+                yield finish(ev) if ev.get("kind") else ev
+            return
+        timings["interpret"] = round(time.monotonic() - t, 2)
+        async for ev in _run_analyst(aplan, ctx, question, mcp, timings, left):
+            yield finish(ev) if ev.get("kind") else ev
+        return
     plan = parse(_strip_company(question, ctx.name), today, ctx.fy_start_month)
     if plan.intent == "data" and needs_llm(plan):
         data = await llm.interpret(question, timeout=max(2.0, config.BUDGET_INTERPRET - (time.monotonic() - t)))
@@ -683,8 +706,68 @@ async def run(question: str, ctx: CompanyCtx, *, llm: LocalLLM | None = None, mc
     yield finish(answer)
 
 
+async def _run_analyst(aplan, ctx: CompanyCtx, question: str, mcp: PulseMCP, timings: dict, left) -> AsyncIterator[dict]:
+    """Multi-constraint questions: several metrics, a ranking, two periods, filters and conditions."""
+    parts = aplan.sections or [aplan]
+    detail = "; ".join(filter(None, [
+        ", ".join(dict.fromkeys(r.name() for p in parts for r in p.refs))[:80],
+        f"{'top' if aplan.top_dir == 'desc' else 'bottom'} {aplan.top_n}" if aplan.top_n else "",
+        f"{len(aplan.conds)} condition{'s' if len(aplan.conds) != 1 else ''}" if aplan.conds else "",
+        f"{len(aplan.sections)} parts" if aplan.sections else ""]))
+    yield {"type": "stage", "stage": "interpret", "status": "done", "detail": f"Analysis: {detail}"}
+    yield {"type": "stage", "stage": "query", "status": "start"}
+    t = time.monotonic()
+    budget = min(config.BUDGET_RCA_QUERY, max(5.0, left() - 6))
+    saved = prefs.load(ctx.id)
+    try:
+        async with mcp.session() as session:
+            async def resolver(raws):
+                return await resolve(session, ctx.id, raws, [])
+            try:
+                answer = await asyncio.wait_for(analyst.run_analysis(session, _query, aplan, ctx, saved, budget, resolver),
+                                                timeout=budget)
+            except analyst.AnalystError as exc:
+                missing = exc.args[0] if exc.args else None
+                if isinstance(missing, RawFilter):
+                    answer = await _not_found_answer(session, ctx, missing, question, budget)
+                else:
+                    reasons = exc.args[1] if len(exc.args) > 1 else []
+                    answer = _simple_answer("clarify", "I couldn't measure what you asked for with the data Pulse has for "
+                                                       f"{ctx.name}. " + " ".join(reasons[:2]),
+                                            suggestions=HELP_SUGGESTIONS[:3])
+    except asyncio.TimeoutError:
+        timings["query"] = round(time.monotonic() - t, 2)
+        yield {"type": "stage", "stage": "query", "status": "done", "detail": "Timed out"}
+        yield _simple_answer("error", "That analysis took longer than my time limit. Try a shorter period, fewer metrics or one "
+                                      "zone, and I'll answer within a minute.")
+        return
+    except GuardViolation as exc:
+        yield {"type": "stage", "stage": "query", "status": "done", "detail": "Blocked by guardrail"}
+        yield _simple_answer("refusal", f"I stopped this answer because a safety check failed ({exc}). No data was shown.")
+        return
+    except DataError as exc:
+        yield {"type": "stage", "stage": "query", "status": "done", "detail": "Data source error"}
+        yield _simple_answer("error", f"I couldn't get the data from Pulse just now: {exc}")
+        return
+    timings["query"] = round(time.monotonic() - t, 2)
+    answer.pop("_top", None)
+    n = (answer.get("how") or {}).get("queries", 0)
+    yield {"type": "stage", "stage": "query", "status": "done", "detail": f"{n} queries · {timings['query']}s"}
+    yield {"type": "stage", "stage": "answer", "status": "start"}
+    if answer.get("kind") in ("data", "empty"):
+        ambiguous = list(dict.fromkeys(mid for p in parts for r in p.refs for mid, _ in r.bases()
+                                       if mid in METRICS and METRICS[mid].ambiguous))
+        answer["formula_notes"] = [_formula_note(m, saved.get(m) or METRICS[m].default.id, ctx, m in saved) for m in ambiguous[:3]]
+        answer["terms"] = glossary.abbreviations_in(answer["summary"])
+        answer.setdefault("suggestions", [])
+    timings["answer"] = 0.0
+    yield {"type": "stage", "stage": "answer", "status": "done"}
+    yield answer
+
+
 async def _run_rca(plan: Plan, ctx: CompanyCtx, question: str, llm: LocalLLM, mcp: PulseMCP, timings: dict,
-                   left, use_llm_summary: bool) -> AsyncIterator[dict]:
+                   left, use_llm_summary: bool, contrib_dims: list[str] | None = None,
+                   contrib_n: int = 5) -> AsyncIterator[dict]:
     """Root cause analysis. Yields stage events, then the answer dict (wrapped by the caller)."""
     metric_id = plan.metrics[0]
     saved = prefs.load(ctx.id)
@@ -713,7 +796,8 @@ async def _run_rca(plan: Plan, ctx: CompanyCtx, question: str, llm: LocalLLM, mc
                 return
             answer = await asyncio.wait_for(
                 rca.analyse(session, _query, ctx=ctx, metric_id=metric_id, period=plan.period, filters=res.filters,
-                            saved=saved, question=question, budget=budget, extra_notes=plan.notes + res.notes),
+                            saved=saved, question=question, budget=budget, extra_notes=plan.notes + res.notes,
+                            contrib_dims=contrib_dims, contrib_n=contrib_n),
                 timeout=budget)
     except asyncio.TimeoutError:
         timings["query"] = round(time.monotonic() - t, 2)

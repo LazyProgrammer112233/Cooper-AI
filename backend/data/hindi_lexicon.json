@@ -18,7 +18,7 @@
   ],
 
   "phrases": {
-    "सबसे कम": "lowest", "सबसे ज्यादा": "highest", "सबसे अधिक": "highest", "सबसे अच्छा": "best", "सबसे अच्छे": "best",
+    "से ज्यादा": "more than", "से अधिक": "more than", "से कम": "less than", "सबसे कम": "lowest", "सबसे ज्यादा": "highest", "सबसे अधिक": "highest", "सबसे अच्छा": "best", "सबसे अच्छे": "best",
     "सबसे खराब": "worst", "सबसे बुरा": "worst", "सबसे नीचे": "bottom", "सबसे ऊपर": "top",
     "इस हफ्ते": "this week", "इस हफते": "this week", "इस हफदे": "this week", "इस हफ्ता": "this week", "इस सप्ताह": "this week", "इस वीक": "this week", "पिछले हफ्ते": "last week", "पिछले हफते": "last week", "पिछले हफदे": "last week", "पिछला हफ्ता": "last week",
     "पिछले सप्ताह": "last week", "लास्ट वीक": "last week", "इस महीने": "this month", "इस माह": "this month", "इस मंथ": "this month",
@@ -43,7 +43,7 @@
     "सारी कंपनियों": "all companies", "भूल जाओ": "ignore all instructions", "सब भूल जाओ": "ignore all instructions",
     "निर्देश भूल": "ignore instructions", "कोका कोला": "coca cola",
 
-    "sabse kam": "lowest", "sabse zyada": "highest", "sabse jyada": "highest", "sabse adhik": "highest", "sabse accha": "best",
+    "se zyada": "more than", "se jyada": "more than", "se adhik": "more than", "se kam": "less than", "sabse kam": "lowest", "sabse zyada": "highest", "sabse jyada": "highest", "sabse adhik": "highest", "sabse accha": "best",
     "sabse achha": "best", "sabse acche": "best", "sabse achhe": "best", "sabse kharab": "worst", "sabse bura": "worst",
     "sabse neeche": "bottom", "sabse upar": "top",
     "is hafte": "this week", "iss hafte": "this week", "is saptah": "this week", "is week": "this week", "pichle hafte": "last week",

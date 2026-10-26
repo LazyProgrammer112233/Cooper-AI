@@ -176,6 +176,20 @@ export function AnswerCard({
                 </div>
               )}
 
+              {a.sections?.map((sec, i) => (
+                <section key={i} className="answer-section">
+                  <h4>
+                    <span className="sec-num">{i + 1}</span> {sec.title}
+                  </h4>
+                  <p className="summary small">{sec.summary}</p>
+                  {(sec.chart || sec.table) && (
+                    <div className="viz">
+                      {sec.chart && sec.chart.type !== "table" ? <ChartView chart={sec.chart} /> : sec.table && <DataTable table={sec.table} />}
+                    </div>
+                  )}
+                </section>
+              ))}
+
               {a.formula_notes.map((n) => (
                 <FormulaChoice key={n.metric} note={n} onChoose={(m, v) => onChooseFormula(m, v, a.question)} />
               ))}
@@ -217,6 +231,18 @@ export function AnswerCard({
                         exit={{ height: 0, opacity: 0 }}
                       >
                         <dl>
+                          {a.how.constraints && a.how.constraints.length > 0 && (
+                            <>
+                              <dt>Understood</dt>
+                              <dd>
+                                <ul className="constraints">
+                                  {a.how.constraints.map((c, i) => (
+                                    <li key={i}>{c}</li>
+                                  ))}
+                                </ul>
+                              </dd>
+                            </>
+                          )}
                           {a.how.understood_as && (
                             <>
                               <dt>Understood as</dt>

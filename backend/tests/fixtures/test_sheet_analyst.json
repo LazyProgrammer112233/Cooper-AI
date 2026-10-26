@@ -2,526 +2,3993 @@
  {
   "id": 1,
   "category": "Sales",
-  "prompt": "Compare the sales performance of top 10 distributors in the North zone over the last 90 days against the previous 90 days. Identify distributors where primary sales grew by more than 15%, but secondary sales declined or remained flat."
+  "prompt": "Compare the sales performance of top 10 distributors in the North zone over the last 90 days against the previous 90 days. Identify distributors where primary sales grew by more than 15%, but secondary sales declined or remained flat.",
+  "expect": {
+   "routed": true,
+   "entity": "distributor",
+   "top": [
+    10,
+    "desc",
+    "primary_sales",
+    "cur"
+   ],
+   "metrics": [
+    "primary_sales",
+    "secondary_sales"
+   ],
+   "period": [
+    "2026-07-29",
+    "2026-10-25"
+   ],
+   "compare": [
+    "2026-05-01",
+    "2026-07-28"
+   ],
+   "filters": [
+    [
+     "north",
+     "zone"
+    ]
+   ],
+   "split": [],
+   "conds": [
+    [
+     "primary_sales",
+     "chg_pct",
+     ">",
+     15.0,
+     false
+    ],
+    [
+     "secondary_sales",
+     "chg_pct",
+     "le_flat",
+     2.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 2,
   "category": "Sales",
-  "prompt": "Show the bottom 10 distributors in Maharashtra by secondary sales for last month. For each, give primary sales, secondary sales, the gap between them, and how both changed versus the month before."
+  "prompt": "Show the bottom 10 distributors in Maharashtra by secondary sales for last month. For each, give primary sales, secondary sales, the gap between them, and how both changed versus the month before.",
+  "expect": {
+   "routed": true,
+   "entity": "distributor",
+   "top": [
+    10,
+    "asc",
+    "secondary_sales",
+    "cur"
+   ],
+   "metrics": [
+    "primary_sales-secondary_sales",
+    "secondary_sales",
+    "primary_sales"
+   ],
+   "period": [
+    "2026-09-01",
+    "2026-09-30"
+   ],
+   "compare": [
+    "2026-08-01",
+    "2026-08-31"
+   ],
+   "filters": [
+    [
+     "maharashtra",
+     null
+    ]
+   ],
+   "split": [],
+   "conds": [],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 3,
   "category": "Sales",
-  "prompt": "Which top 5 brands grew secondary sales by more than 20% in Q2 compared with Q1, and in which zones did each of them decline?"
+  "prompt": "Which top 5 brands grew secondary sales by more than 20% in Q2 compared with Q1, and in which zones did each of them decline?",
+  "expect": {
+   "routed": true,
+   "entity": "brand",
+   "top": [
+    5,
+    "desc",
+    "secondary_sales",
+    "cur"
+   ],
+   "metrics": [
+    "secondary_sales"
+   ],
+   "period": [
+    "2026-07-01",
+    "2026-09-30"
+   ],
+   "compare": [
+    "2026-04-01",
+    "2026-06-30"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "secondary_sales",
+     "chg_pct",
+     ">",
+     20.0,
+     false
+    ]
+   ],
+   "flags": [
+    "drill"
+   ],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 4,
   "category": "Sales",
-  "prompt": "For the top 10 distributors by primary sales this financial year, show month-wise primary sales from April to September and flag any distributor whose billing fell in 2 or more consecutive months."
+  "prompt": "For the top 10 distributors by primary sales this financial year, show month-wise primary sales from April to September and flag any distributor whose billing fell in 2 or more consecutive months.",
+  "expect": {
+   "routed": true,
+   "entity": "distributor",
+   "top": [
+    10,
+    "desc",
+    "primary_sales",
+    "cur"
+   ],
+   "metrics": [
+    "primary_sales"
+   ],
+   "period": [
+    "2026-04-01",
+    "2026-09-30"
+   ],
+   "compare": null,
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [
+    "consecutive"
+   ],
+   "grain": "month",
+   "sections": 0
+  }
  },
  {
   "id": 5,
   "category": "Sales",
-  "prompt": "List distributors in the South zone whose primary sales in the last 60 days are above ₹10 lakh but whose secondary sales are less than 70% of primary."
+  "prompt": "List distributors in the South zone whose primary sales in the last 60 days are above ₹10 lakh but whose secondary sales are less than 70% of primary.",
+  "expect": {
+   "routed": true,
+   "entity": "distributor",
+   "top": null,
+   "metrics": [
+    "secondary_sales/primary_sales",
+    "primary_sales"
+   ],
+   "period": [
+    "2026-08-28",
+    "2026-10-26"
+   ],
+   "compare": null,
+   "filters": [
+    [
+     "south",
+     "zone"
+    ]
+   ],
+   "split": [],
+   "conds": [
+    [
+     "secondary_sales/primary_sales",
+     "cur",
+     "<",
+     70.0,
+     false
+    ],
+    [
+     "primary_sales",
+     "cur",
+     ">",
+     1000000.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 6,
   "category": "Sales",
-  "prompt": "Compare MTD secondary sales against LMTD for every region in the East zone, show the % change, and highlight regions that dropped more than 10%."
+  "prompt": "Compare MTD secondary sales against LMTD for every region in the East zone, show the % change, and highlight regions that dropped more than 10%.",
+  "expect": {
+   "routed": true,
+   "entity": "region",
+   "top": null,
+   "metrics": [
+    "secondary_sales"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-09-01",
+    "2026-09-26"
+   ],
+   "filters": [
+    [
+     "east",
+     "zone"
+    ]
+   ],
+   "split": [],
+   "conds": [
+    [
+     "secondary_sales",
+     "chg_pct",
+     "<",
+     -10.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 7,
   "category": "Sales",
-  "prompt": "Top 5 categories by secondary sales in Karnataka for September vs August. Which category gained the most share and which one lost the most?"
+  "prompt": "Top 5 categories by secondary sales in Karnataka for September vs August. Which category gained the most share and which one lost the most?",
+  "expect": {
+   "routed": true,
+   "entity": "category",
+   "top": [
+    5,
+    "desc",
+    "secondary_sales",
+    "cur"
+   ],
+   "metrics": [
+    "secondary_sales"
+   ],
+   "period": [
+    "2026-09-01",
+    "2026-09-30"
+   ],
+   "compare": [
+    "2026-08-01",
+    "2026-08-31"
+   ],
+   "filters": [
+    [
+     "karnataka",
+     null
+    ]
+   ],
+   "split": [],
+   "conds": [],
+   "flags": [
+    "extremes",
+    "share"
+   ],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 8,
   "category": "Sales",
-  "prompt": "Show the bottom 10 SKUs by secondary sales value in the last 30 days among SKUs that sold at least once in each of the previous 3 months."
+  "prompt": "Show the bottom 10 SKUs by secondary sales value in the last 30 days among SKUs that sold at least once in each of the previous 3 months.",
+  "expect": {
+   "routed": true,
+   "entity": "sku",
+   "top": [
+    10,
+    "asc",
+    "secondary_sales",
+    "cur"
+   ],
+   "metrics": [
+    "secondary_sales"
+   ],
+   "period": [
+    "2026-09-27",
+    "2026-10-25"
+   ],
+   "compare": [
+    "2026-08-29",
+    "2026-09-26"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 9,
   "category": "Sales",
-  "prompt": "Give me zone-wise primary sales for the last 3 months, the month-on-month growth for each, and the zone with the highest and lowest growth."
+  "prompt": "Give me zone-wise primary sales for the last 3 months, the month-on-month growth for each, and the zone with the highest and lowest growth.",
+  "expect": {
+   "routed": true,
+   "entity": "zone",
+   "top": null,
+   "metrics": [
+    "primary_sales"
+   ],
+   "period": [
+    "2026-08-01",
+    "2026-10-26"
+   ],
+   "compare": null,
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [
+    "extremes"
+   ],
+   "grain": "month",
+   "sections": 0
+  }
  },
  {
   "id": 10,
   "category": "Sales",
-  "prompt": "Which distributors in UP billed nothing in the last 15 days but billed more than ₹2 lakh in the 30 days before that?"
+  "prompt": "Which distributors in UP billed nothing in the last 15 days but billed more than ₹2 lakh in the 30 days before that?",
+  "expect": {
+   "routed": true,
+   "entity": "distributor",
+   "top": null,
+   "metrics": [
+    "primary_sales"
+   ],
+   "period": [
+    "2026-10-12",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-09-12",
+    "2026-10-11"
+   ],
+   "filters": [
+    [
+     "up",
+     null
+    ]
+   ],
+   "split": [],
+   "conds": [
+    [
+     "primary_sales",
+     "cur",
+     "<=",
+     0.0,
+     false
+    ],
+    [
+     "primary_sales",
+     "prev",
+     ">",
+     200000.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 11,
   "category": "Sales",
-  "prompt": "Compare Figaro and Bertolli secondary sales by zone for the last 90 days vs the previous 90 days. Where is Figaro growing faster than Bertolli?"
+  "prompt": "Compare Figaro and Bertolli secondary sales by zone for the last 90 days vs the previous 90 days. Where is Figaro growing faster than Bertolli?",
+  "expect": {
+   "routed": true,
+   "entity": "zone",
+   "top": null,
+   "metrics": [
+    "secondary_sales"
+   ],
+   "period": [
+    "2026-07-29",
+    "2026-10-25"
+   ],
+   "compare": [
+    "2026-05-01",
+    "2026-07-28"
+   ],
+   "filters": [],
+   "split": [
+    "figaro",
+    "bertolli"
+   ],
+   "conds": [
+    [
+     "faster:figaro|bertolli",
+     "chg_pct",
+     ">",
+     0.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 12,
   "category": "Sales",
-  "prompt": "Top 10 cities by secondary sales this quarter. For each, show order value, number of orders, drop size, and the change in drop size versus last quarter."
+  "prompt": "Top 10 cities by secondary sales this quarter. For each, show order value, number of orders, drop size, and the change in drop size versus last quarter.",
+  "expect": {
+   "routed": true,
+   "entity": "city",
+   "top": [
+    10,
+    "desc",
+    "secondary_sales",
+    "cur"
+   ],
+   "metrics": [
+    "orders",
+    "secondary_sales",
+    "order_value",
+    "drop_size"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-07-01",
+    "2026-07-26"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 13,
   "category": "Sales",
-  "prompt": "Show distributors whose primary sales this month are more than 25% below their average monthly primary sales of the last 6 months, sorted by the size of the drop."
+  "prompt": "Show distributors whose primary sales this month are more than 25% below their average monthly primary sales of the last 6 months, sorted by the size of the drop.",
+  "expect": {
+   "routed": true,
+   "entity": "distributor",
+   "top": null,
+   "metrics": [
+    "primary_sales"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-26"
+   ],
+   "compare": null,
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "primary_sales",
+     "vs_avg",
+     "<",
+     -25.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 14,
   "category": "Sales",
-  "prompt": "For the Pure category, show region-wise secondary sales for the last 4 weeks, week by week, and point out regions where sales fell for 3 weeks in a row."
+  "prompt": "For the Pure category, show region-wise secondary sales for the last 4 weeks, week by week, and point out regions where sales fell for 3 weeks in a row.",
+  "expect": {
+   "routed": true,
+   "entity": "region",
+   "top": null,
+   "metrics": [
+    "secondary_sales"
+   ],
+   "period": [
+    "2026-09-29",
+    "2026-10-26"
+   ],
+   "compare": null,
+   "filters": [
+    [
+     "pure",
+     "category"
+    ]
+   ],
+   "split": [],
+   "conds": [],
+   "flags": [
+    "consecutive"
+   ],
+   "grain": "week",
+   "sections": 0
+  }
  },
  {
   "id": 15,
   "category": "Sales",
-  "prompt": "Which top 5 regions contributed most to the growth in secondary sales from July to September, and what share of the total growth did each contribute?"
+  "prompt": "Which top 5 regions contributed most to the growth in secondary sales from July to September, and what share of the total growth did each contribute?",
+  "expect": {
+   "routed": true,
+   "entity": "region",
+   "top": [
+    5,
+    "desc",
+    "secondary_sales",
+    "chg_abs"
+   ],
+   "metrics": [
+    "secondary_sales"
+   ],
+   "period": [
+    "2026-09-01",
+    "2026-09-30"
+   ],
+   "compare": [
+    "2026-07-01",
+    "2026-07-31"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [
+    "contribution"
+   ],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 16,
   "category": "Sales",
-  "prompt": "Compare primary invoice value and secondary invoice value for each zone between 1 Oct and 23 Oct this year and the same dates last year."
+  "prompt": "Compare primary invoice value and secondary invoice value for each zone between 1 Oct and 23 Oct this year and the same dates last year.",
+  "expect": {
+   "routed": true,
+   "entity": "zone",
+   "top": null,
+   "metrics": [
+    "primary_invoice_value",
+    "secondary_invoice_value"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-23"
+   ],
+   "compare": [
+    "2025-10-01",
+    "2025-10-23"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 17,
   "category": "Sales",
-  "prompt": "Bottom 5 brands by secondary sales growth in the West zone for the last 2 months vs the 2 months before, only brands with sales above ₹5 lakh in the earlier period."
+  "prompt": "Bottom 5 brands by secondary sales growth in the West zone for the last 2 months vs the 2 months before, only brands with sales above ₹5 lakh in the earlier period.",
+  "expect": {
+   "routed": true,
+   "entity": "brand",
+   "top": [
+    5,
+    "asc",
+    "secondary_sales",
+    "chg_pct"
+   ],
+   "metrics": [
+    "secondary_sales"
+   ],
+   "period": [
+    "2026-09-01",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-07-03",
+    "2026-08-31"
+   ],
+   "filters": [
+    [
+     "west",
+     "zone"
+    ]
+   ],
+   "split": [],
+   "conds": [
+    [
+     "secondary_sales",
+     "prev",
+     ">",
+     500000.0,
+     true
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 18,
   "category": "Sales",
-  "prompt": "Show me the top 10 distributors where primary sales grew more than 30% this quarter but the number of outlets they serve went down."
+  "prompt": "Show me the top 10 distributors where primary sales grew more than 30% this quarter but the number of outlets they serve went down.",
+  "expect": {
+   "routed": true,
+   "entity": "distributor",
+   "top": [
+    10,
+    "desc",
+    "primary_sales",
+    "chg_pct"
+   ],
+   "metrics": [
+    "ubo",
+    "primary_sales"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-25"
+   ],
+   "compare": [
+    "2026-07-01",
+    "2026-07-25"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "primary_sales",
+     "chg_pct",
+     ">",
+     30.0,
+     false
+    ],
+    [
+     "ubo",
+     "chg_pct",
+     "<",
+     0.0,
+     false
+    ]
+   ],
+   "flags": [
+    "filter_first"
+   ],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 19,
   "category": "Sales",
-  "prompt": "Compare weekday versus Sunday secondary sales for the last 8 weeks for each zone, and tell me which zone depends most on weekend sales."
+  "prompt": "Compare weekday versus Sunday secondary sales for the last 8 weeks for each zone, and tell me which zone depends most on weekend sales.",
+  "expect": {
+   "routed": true,
+   "entity": "zone",
+   "top": null,
+   "metrics": [
+    "secondary_sales"
+   ],
+   "period": [
+    "2026-09-01",
+    "2026-10-26"
+   ],
+   "compare": null,
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [
+    "weekday"
+   ],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 20,
   "category": "Sales",
-  "prompt": "For distributors in Tamil Nadu and Kerala, show primary sales and secondary sales for last month and list the ones where secondary is higher than primary by more than 10%."
+  "prompt": "For distributors in Tamil Nadu and Kerala, show primary sales and secondary sales for last month and list the ones where secondary is higher than primary by more than 10%.",
+  "expect": {
+   "routed": true,
+   "entity": "distributor",
+   "top": null,
+   "metrics": [
+    "secondary_sales/primary_sales",
+    "primary_sales",
+    "secondary_sales"
+   ],
+   "period": [
+    "2026-09-01",
+    "2026-09-30"
+   ],
+   "compare": null,
+   "filters": [
+    [
+     "kerala",
+     null
+    ],
+    [
+     "tamil nadu",
+     null
+    ]
+   ],
+   "split": [],
+   "conds": [
+    [
+     "secondary_sales/primary_sales",
+     "cur",
+     ">",
+     110.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 21,
   "category": "Productivity",
-  "prompt": "Show the bottom 10 sales reps by PC% in the North zone for the last 30 days, only reps with at least 200 total calls, and compare their PC% with the previous 30 days."
+  "prompt": "Show the bottom 10 sales reps by PC% in the North zone for the last 30 days, only reps with at least 200 total calls, and compare their PC% with the previous 30 days.",
+  "expect": {
+   "routed": true,
+   "entity": "rep",
+   "top": [
+    10,
+    "asc",
+    "pc_pct",
+    "cur"
+   ],
+   "metrics": [
+    "pc_pct",
+    "tc"
+   ],
+   "period": [
+    "2026-09-27",
+    "2026-10-25"
+   ],
+   "compare": [
+    "2026-08-29",
+    "2026-09-26"
+   ],
+   "filters": [
+    [
+     "north",
+     "zone"
+    ]
+   ],
+   "split": [],
+   "conds": [
+    [
+     "tc",
+     "cur",
+     ">=",
+     200.0,
+     true
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 22,
   "category": "Productivity",
-  "prompt": "Which top 5 regions had the highest productive calls this week vs last week, and which regions saw PC drop more than 15%?"
+  "prompt": "Which top 5 regions had the highest productive calls this week vs last week, and which regions saw PC drop more than 15%?",
+  "expect": {
+   "routed": true,
+   "entity": "region",
+   "top": [
+    5,
+    "desc",
+    "pc",
+    "cur"
+   ],
+   "metrics": [
+    "pc"
+   ],
+   "period": [
+    "2026-10-26",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-10-19",
+    "2026-10-19"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "pc",
+     "chg_pct",
+     "<",
+     -15.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 23,
   "category": "Productivity",
-  "prompt": "Compare TC, PC, PC%, and lines per call for each zone for September vs August, and flag zones where TC went up but PC% went down."
+  "prompt": "Compare TC, PC, PC%, and lines per call for each zone for September vs August, and flag zones where TC went up but PC% went down.",
+  "expect": {
+   "routed": true,
+   "entity": "zone",
+   "top": null,
+   "metrics": [
+    "tc",
+    "pc",
+    "pc_pct",
+    "lpc"
+   ],
+   "period": [
+    "2026-09-01",
+    "2026-09-30"
+   ],
+   "compare": [
+    "2026-08-01",
+    "2026-08-31"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "tc",
+     "chg_pct",
+     ">",
+     0.0,
+     false
+    ],
+    [
+     "pc_pct",
+     "chg_pts",
+     "<",
+     0.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 24,
   "category": "Productivity",
-  "prompt": "List reps in Maharashtra whose average calls per day are below 25 in the last 2 weeks and whose PC% is below the zone average."
+  "prompt": "List reps in Maharashtra whose average calls per day are below 25 in the last 2 weeks and whose PC% is below the zone average.",
+  "expect": {
+   "routed": true,
+   "entity": "rep",
+   "top": null,
+   "metrics": [
+    "calls_per_day",
+    "pc_pct"
+   ],
+   "period": [
+    "2026-10-13",
+    "2026-10-26"
+   ],
+   "compare": null,
+   "filters": [
+    [
+     "maharashtra",
+     null
+    ]
+   ],
+   "split": [],
+   "conds": [
+    [
+     "calls_per_day",
+     "cur",
+     "<",
+     25.0,
+     false
+    ],
+    [
+     "pc_pct",
+     "vs_avg",
+     "<",
+     0.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 25,
   "category": "Productivity",
-  "prompt": "Top 10 reps by order value in the last 60 days. For each, show TC, PC, PC%, drop size, and lines per call, and highlight anyone whose drop size fell by more than 20%."
+  "prompt": "Top 10 reps by order value in the last 60 days. For each, show TC, PC, PC%, drop size, and lines per call, and highlight anyone whose drop size fell by more than 20%.",
+  "expect": {
+   "routed": true,
+   "entity": "rep",
+   "top": [
+    10,
+    "desc",
+    "order_value",
+    "cur"
+   ],
+   "metrics": [
+    "order_value",
+    "tc",
+    "pc",
+    "pc_pct",
+    "drop_size",
+    "lpc"
+   ],
+   "period": [
+    "2026-08-28",
+    "2026-10-25"
+   ],
+   "compare": [
+    "2026-06-30",
+    "2026-08-27"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "drop_size",
+     "chg_pct",
+     "<",
+     -20.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 26,
   "category": "Productivity",
-  "prompt": "Bottom 5 regions by lines per call in Q2, with their LPC in Q1, and the change in percentage points."
+  "prompt": "Bottom 5 regions by lines per call in Q2, with their LPC in Q1, and the change in percentage points.",
+  "expect": {
+   "routed": true,
+   "entity": "region",
+   "top": [
+    5,
+    "asc",
+    "lpc",
+    "cur"
+   ],
+   "metrics": [
+    "lpc"
+   ],
+   "period": [
+    "2026-07-01",
+    "2026-09-30"
+   ],
+   "compare": [
+    "2026-04-01",
+    "2026-06-30"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 27,
   "category": "Productivity",
-  "prompt": "Show PC trend week by week for the last 8 weeks for the East zone, and tell me in which week PC dropped the most and why."
+  "prompt": "Show PC trend week by week for the last 8 weeks for the East zone, and tell me in which week PC dropped the most and why.",
+  "expect": {
+   "routed": true,
+   "entity": null,
+   "top": null,
+   "metrics": [
+    "pc"
+   ],
+   "period": [
+    "2026-09-01",
+    "2026-10-26"
+   ],
+   "compare": null,
+   "filters": [
+    [
+     "east",
+     "zone"
+    ]
+   ],
+   "split": [],
+   "conds": [],
+   "flags": [],
+   "grain": "week",
+   "sections": 0
+  }
  },
  {
   "id": 28,
   "category": "Productivity",
-  "prompt": "Which reps made more than 40 calls a day on average last month but converted less than 15% of calls into orders?"
+  "prompt": "Which reps made more than 40 calls a day on average last month but converted less than 15% of calls into orders?",
+  "expect": {
+   "routed": true,
+   "entity": "rep",
+   "top": null,
+   "metrics": [
+    "calls_per_day",
+    "tc",
+    "orders",
+    "pc_pct"
+   ],
+   "period": [
+    "2026-09-01",
+    "2026-09-30"
+   ],
+   "compare": null,
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "calls_per_day",
+     "cur",
+     ">",
+     40.0,
+     false
+    ],
+    [
+     "pc_pct",
+     "cur",
+     "<",
+     15.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 29,
   "category": "Productivity",
-  "prompt": "Compare productive calls per rep per day across all zones for the last 90 days vs the previous 90 days, ranked from best to worst improvement."
+  "prompt": "Compare productive calls per rep per day across all zones for the last 90 days vs the previous 90 days, ranked from best to worst improvement.",
+  "expect": {
+   "routed": true,
+   "entity": "zone",
+   "top": null,
+   "metrics": [
+    "pc_per_day"
+   ],
+   "period": [
+    "2026-07-29",
+    "2026-10-25"
+   ],
+   "compare": [
+    "2026-05-01",
+    "2026-07-28"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 30,
   "category": "Productivity",
-  "prompt": "Show the top 10 territories by PC% this month, only territories with at least 5 reps, and their PC% last month."
+  "prompt": "Show the top 10 territories by PC% this month, only territories with at least 5 reps, and their PC% last month.",
+  "expect": {
+   "routed": true,
+   "entity": "territory",
+   "top": [
+    10,
+    "desc",
+    "pc_pct",
+    "cur"
+   ],
+   "metrics": [
+    "working_reps",
+    "pc_pct"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-09-01",
+    "2026-09-26"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "working_reps",
+     "cur",
+     ">=",
+     5.0,
+     true
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 31,
   "category": "Productivity",
-  "prompt": "Compare drop size for the Figaro brand across regions for last month vs the same month last year, showing only regions where drop size fell."
+  "prompt": "Compare drop size for the Figaro brand across regions for last month vs the same month last year, showing only regions where drop size fell.",
+  "expect": {
+   "routed": true,
+   "entity": "region",
+   "top": null,
+   "metrics": [
+    "drop_size"
+   ],
+   "period": [
+    "2026-09-01",
+    "2026-09-30"
+   ],
+   "compare": [
+    "2025-09-01",
+    "2025-09-30"
+   ],
+   "filters": [
+    [
+     "figaro",
+     "brand"
+    ]
+   ],
+   "split": [],
+   "conds": [
+    [
+     "drop_size",
+     "chg_pct",
+     "<",
+     0.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 32,
   "category": "Productivity",
-  "prompt": "Give me reps whose total calls fell by more than 30% this week compared with their average week over the last 4 weeks."
+  "prompt": "Give me reps whose total calls fell by more than 30% this week compared with their average week over the last 4 weeks.",
+  "expect": {
+   "routed": true,
+   "entity": "rep",
+   "top": null,
+   "metrics": [
+    "tc"
+   ],
+   "period": [
+    "2026-10-26",
+    "2026-10-26"
+   ],
+   "compare": null,
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "tc",
+     "vs_avg",
+     "<",
+     -30.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 33,
   "category": "Productivity",
-  "prompt": "Show the bottom 10 reps by order value per productive call in South zone for October so far, and compare with September."
+  "prompt": "Show the bottom 10 reps by order value per productive call in South zone for October so far, and compare with September.",
+  "expect": {
+   "routed": true,
+   "entity": "rep",
+   "top": [
+    10,
+    "asc",
+    "order_value per pc",
+    "cur"
+   ],
+   "metrics": [
+    "order_value per pc"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-09-01",
+    "2026-09-30"
+   ],
+   "filters": [
+    [
+     "south",
+     "zone"
+    ]
+   ],
+   "split": [],
+   "conds": [],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 34,
   "category": "Productivity",
-  "prompt": "For each zone, show average calls per rep, PC%, and drop size for the last 30 days, and rank zones by overall productivity."
+  "prompt": "For each zone, show average calls per rep, PC%, and drop size for the last 30 days, and rank zones by overall productivity.",
+  "expect": {
+   "routed": true,
+   "entity": "zone",
+   "top": null,
+   "metrics": [
+    "avg_calls_per_rep",
+    "pc_pct",
+    "drop_size"
+   ],
+   "period": [
+    "2026-09-27",
+    "2026-10-26"
+   ],
+   "compare": null,
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [
+    "composite"
+   ],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 35,
   "category": "Productivity",
-  "prompt": "Which top 5 regions improved PC% by more than 3 percentage points this month vs last month, and how did their total calls change?"
+  "prompt": "Which top 5 regions improved PC% by more than 3 percentage points this month vs last month, and how did their total calls change?",
+  "expect": {
+   "routed": true,
+   "entity": "region",
+   "top": [
+    5,
+    "desc",
+    "pc_pct",
+    "cur"
+   ],
+   "metrics": [
+    "pc_pct",
+    "tc"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-09-01",
+    "2026-09-26"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "pc_pct",
+     "chg_pts",
+     ">",
+     3.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 36,
   "category": "Productivity",
-  "prompt": "List reps in UP with PC% above 30% but drop size below ₹500 in the last 45 days."
+  "prompt": "List reps in UP with PC% above 30% but drop size below ₹500 in the last 45 days.",
+  "expect": {
+   "routed": true,
+   "entity": "rep",
+   "top": null,
+   "metrics": [
+    "pc_pct",
+    "drop_size"
+   ],
+   "period": [
+    "2026-09-12",
+    "2026-10-26"
+   ],
+   "compare": null,
+   "filters": [
+    [
+     "up",
+     null
+    ]
+   ],
+   "split": [],
+   "conds": [
+    [
+     "pc_pct",
+     "cur",
+     ">",
+     30.0,
+     false
+    ],
+    [
+     "drop_size",
+     "cur",
+     "<",
+     500.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 37,
   "category": "Productivity",
-  "prompt": "Compare productive calls on the first 10 days of October with the first 10 days of September for each region, and highlight regions with a drop of over 20%."
+  "prompt": "Compare productive calls on the first 10 days of October with the first 10 days of September for each region, and highlight regions with a drop of over 20%.",
+  "expect": {
+   "routed": true,
+   "entity": "region",
+   "top": null,
+   "metrics": [
+    "pc"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-10"
+   ],
+   "compare": [
+    "2026-09-01",
+    "2026-09-10"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "pc",
+     "chg_pct",
+     "<",
+     -20.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 38,
   "category": "Productivity",
-  "prompt": "Show the top 10 reps by UBO this month and their UBO last month, and list any rep whose UBO fell by more than 25%."
+  "prompt": "Show the top 10 reps by UBO this month and their UBO last month, and list any rep whose UBO fell by more than 25%.",
+  "expect": {
+   "routed": true,
+   "entity": "rep",
+   "top": [
+    10,
+    "desc",
+    "ubo",
+    "cur"
+   ],
+   "metrics": [
+    "ubo"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-09-01",
+    "2026-09-26"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "ubo",
+     "chg_pct",
+     "<",
+     -25.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 39,
   "category": "Productivity",
-  "prompt": "Which zone has the biggest gap between total calls and productive calls in the last 2 weeks, and which 5 reps in that zone have the lowest PC%?"
+  "prompt": "Which zone has the biggest gap between total calls and productive calls in the last 2 weeks, and which 5 reps in that zone have the lowest PC%?",
+  "expect": {
+   "routed": true,
+   "entity": null,
+   "top": null,
+   "metrics": [],
+   "period": null,
+   "compare": null,
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [],
+   "grain": null,
+   "sections": 2,
+   "section_plans": [
+    {
+     "entity": "zone",
+     "top": [
+      1,
+      "desc",
+      "tc-pc",
+      "cur"
+     ],
+     "metrics": [
+      "tc-pc"
+     ]
+    },
+    {
+     "entity": "rep",
+     "top": [
+      10,
+      "asc",
+      "pc_pct",
+      "cur"
+     ],
+     "metrics": [
+      "pc_pct"
+     ]
+    }
+   ]
+  }
  },
  {
   "id": 40,
   "category": "Productivity",
-  "prompt": "Give the month-wise trend of lines per call and drop size for the last 6 months for Karnataka and Tamil Nadu side by side."
+  "prompt": "Give the month-wise trend of lines per call and drop size for the last 6 months for Karnataka and Tamil Nadu side by side.",
+  "expect": {
+   "routed": true,
+   "entity": null,
+   "top": null,
+   "metrics": [
+    "lpc",
+    "drop_size"
+   ],
+   "period": [
+    "2026-05-01",
+    "2026-10-26"
+   ],
+   "compare": null,
+   "filters": [],
+   "split": [
+    "karnataka",
+    "tamil nadu"
+   ],
+   "conds": [],
+   "flags": [],
+   "grain": "month",
+   "sections": 0
+  }
  },
  {
   "id": 41,
   "category": "Discipline",
-  "prompt": "Show the bottom 10 reps by average first call time in the North zone for the last 30 days, only reps who worked at least 15 days, and compare with the previous 30 days."
+  "prompt": "Show the bottom 10 reps by average first call time in the North zone for the last 30 days, only reps who worked at least 15 days, and compare with the previous 30 days.",
+  "expect": {
+   "routed": true,
+   "entity": "rep",
+   "top": [
+    10,
+    "desc",
+    "avg_call_start_time",
+    "cur"
+   ],
+   "metrics": [
+    "market_days",
+    "avg_call_start_time"
+   ],
+   "period": [
+    "2026-09-27",
+    "2026-10-25"
+   ],
+   "compare": [
+    "2026-08-29",
+    "2026-09-26"
+   ],
+   "filters": [
+    [
+     "north",
+     "zone"
+    ]
+   ],
+   "split": [],
+   "conds": [
+    [
+     "market_days",
+     "cur",
+     ">=",
+     15.0,
+     true
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 42,
   "category": "Discipline",
-  "prompt": "Which reps started their first call after 11 AM on more than 5 days in the last 2 weeks, and what was their PC% on those days?"
+  "prompt": "Which reps started their first call after 11 AM on more than 5 days in the last 2 weeks, and what was their PC% on those days?",
+  "expect": {
+   "routed": true,
+   "entity": "rep",
+   "top": null,
+   "metrics": [
+    "late_start_days@39600",
+    "pc_pct"
+   ],
+   "period": [
+    "2026-10-13",
+    "2026-10-26"
+   ],
+   "compare": null,
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "late_start_days@39600",
+     "cur",
+     ">",
+     5.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 43,
   "category": "Discipline",
-  "prompt": "Compare average call start time by zone for this month vs last month and flag zones where the start time moved later by more than 20 minutes."
+  "prompt": "Compare average call start time by zone for this month vs last month and flag zones where the start time moved later by more than 20 minutes.",
+  "expect": {
+   "routed": true,
+   "entity": "zone",
+   "top": null,
+   "metrics": [
+    "avg_call_start_time"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-09-01",
+    "2026-09-30"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "avg_call_start_time",
+     "chg_abs",
+     ">",
+     1200.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 44,
   "category": "Discipline",
-  "prompt": "List reps who were on leave or absent for more than 4 days in October, along with their productive calls and order value for the month."
+  "prompt": "List reps who were on leave or absent for more than 4 days in October, along with their productive calls and order value for the month.",
+  "expect": {
+   "routed": true,
+   "entity": "rep",
+   "top": null,
+   "metrics": [
+    "leave_absent_days",
+    "pc",
+    "order_value"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-26"
+   ],
+   "compare": null,
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "leave_absent_days",
+     "cur",
+     ">",
+     4.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 45,
   "category": "Discipline",
-  "prompt": "Show the top 10 reps with the most zero-order days (calls but no orders) in the last 30 days, and their total calls on those days."
+  "prompt": "Show the top 10 reps with the most zero-order days (calls but no orders) in the last 30 days, and their total calls on those days.",
+  "expect": {
+   "routed": true,
+   "entity": "rep",
+   "top": [
+    10,
+    "desc",
+    "zero_order_days",
+    "cur"
+   ],
+   "metrics": [
+    "zero_order_days",
+    "tc"
+   ],
+   "period": [
+    "2026-09-27",
+    "2026-10-26"
+   ],
+   "compare": null,
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 46,
   "category": "Discipline",
-  "prompt": "How many market days did each zone have this week vs last week, and how much of the PC drop is explained by fewer working days?"
+  "prompt": "How many market days did each zone have this week vs last week, and how much of the PC drop is explained by fewer working days?",
+  "expect": {
+   "routed": true,
+   "entity": "zone",
+   "top": null,
+   "metrics": [
+    "market_days",
+    "pc"
+   ],
+   "period": [
+    "2026-10-26",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-10-19",
+    "2026-10-19"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [
+    "why"
+   ],
+   "grain": null,
+   "sections": 0,
+   "why_metric": "pc"
+  }
  },
  {
   "id": 47,
   "category": "Discipline",
-  "prompt": "Show reps in Maharashtra who followed their tour plan on fewer than 80% of days last month, ranked from lowest adherence."
+  "prompt": "Show reps in Maharashtra who followed their tour plan on fewer than 80% of days last month, ranked from lowest adherence.",
+  "expect": {
+   "routed": true,
+   "entity": "rep",
+   "top": null,
+   "metrics": [
+    "tour_plan_adherence_pct"
+   ],
+   "period": [
+    "2026-09-01",
+    "2026-09-30"
+   ],
+   "compare": null,
+   "filters": [
+    [
+     "maharashtra",
+     null
+    ]
+   ],
+   "split": [],
+   "conds": [
+    [
+     "tour_plan_adherence_pct",
+     "cur",
+     "<",
+     80.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 48,
   "category": "Discipline",
-  "prompt": "Compare average time spent in market per rep by region for the last 4 weeks vs the 4 weeks before, and list the bottom 5 regions."
+  "prompt": "Compare average time spent in market per rep by region for the last 4 weeks vs the 4 weeks before, and list the bottom 5 regions.",
+  "expect": {
+   "routed": true,
+   "entity": "region",
+   "top": [
+    5,
+    "asc",
+    "time_in_market",
+    "cur"
+   ],
+   "metrics": [
+    "time_in_market"
+   ],
+   "period": [
+    "2026-09-29",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-09-01",
+    "2026-09-28"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 49,
   "category": "Discipline",
-  "prompt": "Which reps had fewer than 20 working days in September but more than 22 working days in August, and how did their sales change?"
+  "prompt": "Which reps had fewer than 20 working days in September but more than 22 working days in August, and how did their sales change?",
+  "expect": {
+   "routed": true,
+   "entity": "rep",
+   "top": null,
+   "metrics": [
+    "market_days",
+    "secondary_sales"
+   ],
+   "period": [
+    "2026-09-01",
+    "2026-09-30"
+   ],
+   "compare": [
+    "2026-08-01",
+    "2026-08-31"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "market_days",
+     "cur",
+     "<",
+     20.0,
+     false
+    ],
+    [
+     "market_days",
+     "prev",
+     ">",
+     22.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 50,
   "category": "Discipline",
-  "prompt": "Show reps whose last call of the day was before 4 PM on more than 30% of days this month, with their average calls per day."
+  "prompt": "Show reps whose last call of the day was before 4 PM on more than 30% of days this month, with their average calls per day.",
+  "expect": {
+   "routed": true,
+   "entity": "rep",
+   "top": null,
+   "metrics": [
+    "calls_per_day",
+    "days%:early_end_days@57600"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-26"
+   ],
+   "compare": null,
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "days%:early_end_days@57600",
+     "cur",
+     ">",
+     30.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 51,
   "category": "Discipline",
-  "prompt": "For the East zone, show day-wise attendance (reps who started their day) for the last 14 days and point out days with more than 20% reps missing."
+  "prompt": "For the East zone, show day-wise attendance (reps who started their day) for the last 14 days and point out days with more than 20% reps missing.",
+  "expect": {
+   "routed": true,
+   "entity": null,
+   "top": null,
+   "metrics": [
+    "working_reps"
+   ],
+   "period": [
+    "2026-10-13",
+    "2026-10-26"
+   ],
+   "compare": null,
+   "filters": [
+    [
+     "east",
+     "zone"
+    ]
+   ],
+   "split": [],
+   "conds": [
+    [
+     "working_reps",
+     "vs_avg",
+     "<",
+     -20.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": "day",
+   "sections": 0
+  }
  },
  {
   "id": 52,
   "category": "Discipline",
-  "prompt": "Bottom 10 reps by number of days with at least 25 calls in October, only reps who worked at least 15 days."
+  "prompt": "Bottom 10 reps by number of days with at least 25 calls in October, only reps who worked at least 15 days.",
+  "expect": {
+   "routed": true,
+   "entity": "rep",
+   "top": [
+    10,
+    "asc",
+    "days_min_calls@25",
+    "cur"
+   ],
+   "metrics": [
+    "days_min_calls@25",
+    "market_days"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-26"
+   ],
+   "compare": null,
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "market_days",
+     "cur",
+     ">=",
+     15.0,
+     true
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 53,
   "category": "Discipline",
-  "prompt": "Compare the share of reps starting their day before 9:30 AM across zones for the last 30 days vs the previous 30 days."
+  "prompt": "Compare the share of reps starting their day before 9:30 AM across zones for the last 30 days vs the previous 30 days.",
+  "expect": {
+   "routed": true,
+   "entity": "zone",
+   "top": null,
+   "metrics": [
+    "days%:early_start_days@34200"
+   ],
+   "period": [
+    "2026-09-27",
+    "2026-10-25"
+   ],
+   "compare": [
+    "2026-08-29",
+    "2026-09-26"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 54,
   "category": "Discipline",
-  "prompt": "List reps who made fewer than 10 calls on more than 3 working days in the last 2 weeks, along with their region and manager."
+  "prompt": "List reps who made fewer than 10 calls on more than 3 working days in the last 2 weeks, along with their region and manager.",
+  "expect": {
+   "routed": true,
+   "entity": "rep",
+   "top": null,
+   "metrics": [
+    "low_call_days@10",
+    "market_days"
+   ],
+   "period": [
+    "2026-10-13",
+    "2026-10-26"
+   ],
+   "compare": null,
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "low_call_days@10",
+     "cur",
+     ">",
+     3.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 55,
   "category": "Discipline",
-  "prompt": "Which regions had the most holiday and leave days marked in October, and how did that affect productive calls compared with September?"
+  "prompt": "Which regions had the most holiday and leave days marked in October, and how did that affect productive calls compared with September?",
+  "expect": {
+   "routed": true,
+   "entity": "region",
+   "top": [
+    10,
+    "desc",
+    "holiday_leave_days",
+    "cur"
+   ],
+   "metrics": [
+    "holiday_leave_days",
+    "pc"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-09-01",
+    "2026-09-30"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 56,
   "category": "Distribution & outlets",
-  "prompt": "Show the bottom 5 zones by coverage % for the last 30 days, and for each, the number of outlets visited, total outlets, and the change in coverage vs the previous 30 days."
+  "prompt": "Show the bottom 5 zones by coverage % for the last 30 days, and for each, the number of outlets visited, total outlets, and the change in coverage vs the previous 30 days.",
+  "expect": {
+   "routed": true,
+   "entity": "zone",
+   "top": [
+    5,
+    "asc",
+    "coverage_pct",
+    "cur"
+   ],
+   "metrics": [
+    "active_outlets",
+    "coverage_pct",
+    "visited_outlets"
+   ],
+   "period": [
+    "2026-09-27",
+    "2026-10-25"
+   ],
+   "compare": [
+    "2026-08-29",
+    "2026-09-26"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 57,
   "category": "Distribution & outlets",
-  "prompt": "Which top 10 cities have the highest number of inactive outlets this quarter, and what % of their outlet base is that?"
+  "prompt": "Which top 10 cities have the highest number of inactive outlets this quarter, and what % of their outlet base is that?",
+  "expect": {
+   "routed": true,
+   "entity": "city",
+   "top": [
+    10,
+    "desc",
+    "inactive_outlets",
+    "cur"
+   ],
+   "metrics": [
+    "inactive_outlets_pct",
+    "inactive_outlets"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-26"
+   ],
+   "compare": null,
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 58,
   "category": "Distribution & outlets",
-  "prompt": "Compare UBO and UBO % for each region for September vs August, and list regions where UBO grew but UBO % fell."
+  "prompt": "Compare UBO and UBO % for each region for September vs August, and list regions where UBO grew but UBO % fell.",
+  "expect": {
+   "routed": true,
+   "entity": "region",
+   "top": null,
+   "metrics": [
+    "ubo",
+    "ubo_pct"
+   ],
+   "period": [
+    "2026-09-01",
+    "2026-09-30"
+   ],
+   "compare": [
+    "2026-08-01",
+    "2026-08-31"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "ubo",
+     "chg_pct",
+     ">",
+     0.0,
+     false
+    ],
+    [
+     "ubo_pct",
+     "chg_pts",
+     "<",
+     0.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 59,
   "category": "Distribution & outlets",
-  "prompt": "List distributors in Karnataka whose number of billed outlets fell by more than 20% in the last 60 days vs the 60 days before."
+  "prompt": "List distributors in Karnataka whose number of billed outlets fell by more than 20% in the last 60 days vs the 60 days before.",
+  "expect": {
+   "routed": true,
+   "entity": "distributor",
+   "top": null,
+   "metrics": [
+    "ubo"
+   ],
+   "period": [
+    "2026-08-28",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-06-29",
+    "2026-08-27"
+   ],
+   "filters": [
+    [
+     "karnataka",
+     null
+    ]
+   ],
+   "split": [],
+   "conds": [
+    [
+     "ubo",
+     "chg_pct",
+     "<",
+     -20.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 60,
   "category": "Distribution & outlets",
-  "prompt": "Show new outlets added by each zone month by month for the last 6 months, and the % of new outlets that ordered at least once."
+  "prompt": "Show new outlets added by each zone month by month for the last 6 months, and the % of new outlets that ordered at least once.",
+  "expect": {
+   "routed": true,
+   "entity": "zone",
+   "top": null,
+   "metrics": [
+    "productive_outlets",
+    "new_outlets"
+   ],
+   "period": [
+    "2026-05-01",
+    "2026-10-26"
+   ],
+   "compare": null,
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [],
+   "grain": "month",
+   "sections": 0
+  }
  },
  {
   "id": 61,
   "category": "Distribution & outlets",
-  "prompt": "Top 5 regions by penetration % for the EV category this quarter, and the same regions' penetration last quarter."
+  "prompt": "Top 5 regions by penetration % for the EV category this quarter, and the same regions' penetration last quarter.",
+  "expect": {
+   "routed": true,
+   "entity": "region",
+   "top": [
+    5,
+    "desc",
+    "penetration_pct",
+    "cur"
+   ],
+   "metrics": [
+    "penetration_pct"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-07-01",
+    "2026-09-30"
+   ],
+   "filters": [
+    [
+     "ev",
+     "category"
+    ]
+   ],
+   "split": [],
+   "conds": [],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 62,
   "category": "Distribution & outlets",
-  "prompt": "Which categories have penetration below 20% in the South zone this month, and what was their penetration 3 months ago?"
+  "prompt": "Which categories have penetration below 20% in the South zone this month, and what was their penetration 3 months ago?",
+  "expect": {
+   "routed": true,
+   "entity": "category",
+   "top": null,
+   "metrics": [
+    "penetration_pct"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-07-01",
+    "2026-07-31"
+   ],
+   "filters": [
+    [
+     "south",
+     "zone"
+    ]
+   ],
+   "split": [],
+   "conds": [
+    [
+     "penetration_pct",
+     "cur",
+     "<",
+     20.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 63,
   "category": "Distribution & outlets",
-  "prompt": "Show the bottom 10 territories by active outlets in October so far, only territories with more than 300 outlets in total."
+  "prompt": "Show the bottom 10 territories by active outlets in October so far, only territories with more than 300 outlets in total.",
+  "expect": {
+   "routed": true,
+   "entity": "territory",
+   "top": [
+    10,
+    "asc",
+    "active_outlets",
+    "cur"
+   ],
+   "metrics": [
+    "ubo",
+    "active_outlets"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-26"
+   ],
+   "compare": null,
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "active_outlets",
+     "cur",
+     ">",
+     300.0,
+     true
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 64,
   "category": "Distribution & outlets",
-  "prompt": "Compare coverage %, UBO %, and PC% for each zone in the last 30 days and identify zones that are weak on all three."
+  "prompt": "Compare coverage %, UBO %, and PC% for each zone in the last 30 days and identify zones that are weak on all three.",
+  "expect": {
+   "routed": true,
+   "entity": "zone",
+   "top": null,
+   "metrics": [
+    "coverage_pct",
+    "ubo_pct",
+    "pc_pct"
+   ],
+   "period": [
+    "2026-09-27",
+    "2026-10-25"
+   ],
+   "compare": [
+    "2026-08-29",
+    "2026-09-26"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "coverage_pct",
+     "vs_avg",
+     "<",
+     0.0,
+     false
+    ],
+    [
+     "ubo_pct",
+     "vs_avg",
+     "<",
+     0.0,
+     false
+    ],
+    [
+     "pc_pct",
+     "vs_avg",
+     "<",
+     0.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 65,
   "category": "Distribution & outlets",
-  "prompt": "How many outlets ordered Figaro Baby in the last 90 days vs the previous 90 days in each region, and where did it lose the most outlets?"
+  "prompt": "How many outlets ordered Figaro Baby in the last 90 days vs the previous 90 days in each region, and where did it lose the most outlets?",
+  "expect": {
+   "routed": true,
+   "entity": "region",
+   "top": null,
+   "metrics": [
+    "productive_outlets"
+   ],
+   "period": [
+    "2026-07-29",
+    "2026-10-25"
+   ],
+   "compare": [
+    "2026-05-01",
+    "2026-07-28"
+   ],
+   "filters": [
+    [
+     "figaro baby",
+     null
+    ]
+   ],
+   "split": [],
+   "conds": [],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 66,
   "category": "Distribution & outlets",
-  "prompt": "Show distributors serving more than 200 outlets where less than 40% of outlets billed in the last 30 days."
+  "prompt": "Show distributors serving more than 200 outlets where less than 40% of outlets billed in the last 30 days.",
+  "expect": {
+   "routed": true,
+   "entity": "distributor",
+   "top": null,
+   "metrics": [
+    "ubo/visited_outlets",
+    "ubo"
+   ],
+   "period": [
+    "2026-09-27",
+    "2026-10-26"
+   ],
+   "compare": null,
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "ubo/visited_outlets",
+     "cur",
+     "<",
+     40.0,
+     false
+    ],
+    [
+     "ubo",
+     "cur",
+     ">",
+     200.0,
+     true
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 67,
   "category": "Distribution & outlets",
-  "prompt": "Which top 10 cities added the most new outlets in Q2, and how many of those new outlets are still active this month?"
+  "prompt": "Which top 10 cities added the most new outlets in Q2, and how many of those new outlets are still active this month?",
+  "expect": {
+   "routed": true,
+   "entity": "city",
+   "top": [
+    10,
+    "desc",
+    "secondary_sales",
+    "cur"
+   ],
+   "metrics": [
+    "new_outlets",
+    "secondary_sales"
+   ],
+   "period": [
+    "2026-07-01",
+    "2026-09-30"
+   ],
+   "compare": null,
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 68,
   "category": "Distribution & outlets",
-  "prompt": "Compare outlet coverage for weekdays vs Sundays for the last 4 weeks in Maharashtra and Gujarat."
+  "prompt": "Compare outlet coverage for weekdays vs Sundays for the last 4 weeks in Maharashtra and Gujarat.",
+  "expect": {
+   "routed": true,
+   "entity": null,
+   "top": null,
+   "metrics": [
+    "coverage_pct"
+   ],
+   "period": [
+    "2026-09-29",
+    "2026-10-26"
+   ],
+   "compare": null,
+   "filters": [],
+   "split": [
+    "maharashtra",
+    "gujarat"
+   ],
+   "conds": [],
+   "flags": [
+    "weekday"
+   ],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 69,
   "category": "Distribution & outlets",
-  "prompt": "Show region-wise inactive outlets that were active last month, and the secondary sales lost from them compared with last month."
+  "prompt": "Show region-wise inactive outlets that were active last month, and the secondary sales lost from them compared with last month.",
+  "expect": {
+   "routed": true,
+   "entity": "region",
+   "top": null,
+   "metrics": [
+    "inactive_outlets",
+    "secondary_sales"
+   ],
+   "period": [
+    "2026-09-01",
+    "2026-09-30"
+   ],
+   "compare": [
+    "2026-08-01",
+    "2026-08-31"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 70,
   "category": "Distribution & outlets",
-  "prompt": "For the Lotion and Massage Oil categories, show UBO by zone for the last 60 days and the zones where UBO fell more than 15% vs the previous 60 days."
+  "prompt": "For the Lotion and Massage Oil categories, show UBO by zone for the last 60 days and the zones where UBO fell more than 15% vs the previous 60 days.",
+  "expect": {
+   "routed": true,
+   "entity": "zone",
+   "top": null,
+   "metrics": [
+    "ubo"
+   ],
+   "period": [
+    "2026-08-28",
+    "2026-10-25"
+   ],
+   "compare": [
+    "2026-06-30",
+    "2026-08-27"
+   ],
+   "filters": [
+    [
+     "lotion",
+     "category"
+    ],
+    [
+     "massage oil",
+     "category"
+    ]
+   ],
+   "split": [],
+   "conds": [
+    [
+     "ubo",
+     "chg_pct",
+     "<",
+     -15.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 71,
   "category": "Cross-metric diagnostics",
-  "prompt": "Identify distributors where primary sales grew by more than 20% in the last quarter but secondary sales grew by less than 5%, which may mean stock is building up. Show the top 10 by the gap."
+  "prompt": "Identify distributors where primary sales grew by more than 20% in the last quarter but secondary sales grew by less than 5%, which may mean stock is building up. Show the top 10 by the gap.",
+  "expect": {
+   "routed": true,
+   "entity": "distributor",
+   "top": [
+    10,
+    "desc",
+    "primary_sales",
+    "gapchg"
+   ],
+   "metrics": [
+    "primary_sales",
+    "secondary_sales"
+   ],
+   "period": [
+    "2026-07-01",
+    "2026-09-30"
+   ],
+   "compare": [
+    "2026-04-01",
+    "2026-06-30"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "primary_sales",
+     "chg_pct",
+     ">",
+     20.0,
+     false
+    ],
+    [
+     "secondary_sales",
+     "chg_pct",
+     "<",
+     5.0,
+     false
+    ]
+   ],
+   "flags": [
+    "filter_first"
+   ],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 72,
   "category": "Cross-metric diagnostics",
-  "prompt": "For the top 5 zones by secondary sales, compare PC%, drop size, and coverage % for this month vs last month, and say which metric drove the change in each zone."
+  "prompt": "For the top 5 zones by secondary sales, compare PC%, drop size, and coverage % for this month vs last month, and say which metric drove the change in each zone.",
+  "expect": {
+   "routed": true,
+   "entity": "zone",
+   "top": [
+    5,
+    "desc",
+    "secondary_sales",
+    "cur"
+   ],
+   "metrics": [
+    "secondary_sales",
+    "pc_pct",
+    "drop_size",
+    "coverage_pct"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-09-01",
+    "2026-09-26"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [
+    "drivers"
+   ],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 73,
   "category": "Cross-metric diagnostics",
-  "prompt": "Show the top 10 reps by sales growth in the last 30 days vs the previous 30 days, and for each, whether the growth came from more calls, a better PC%, or a bigger drop size."
+  "prompt": "Show the top 10 reps by sales growth in the last 30 days vs the previous 30 days, and for each, whether the growth came from more calls, a better PC%, or a bigger drop size.",
+  "expect": {
+   "routed": true,
+   "entity": "rep",
+   "top": [
+    10,
+    "desc",
+    "secondary_sales",
+    "chg_pct"
+   ],
+   "metrics": [
+    "tc",
+    "pc_pct",
+    "drop_size",
+    "secondary_sales"
+   ],
+   "period": [
+    "2026-09-27",
+    "2026-10-25"
+   ],
+   "compare": [
+    "2026-08-29",
+    "2026-09-26"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [
+    "drivers"
+   ],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 74,
   "category": "Cross-metric diagnostics",
-  "prompt": "Which brands have high sales growth (above 15%) but falling UBO in the last 60 days vs the 60 days before, by zone?"
+  "prompt": "Which brands have high sales growth (above 15%) but falling UBO in the last 60 days vs the 60 days before, by zone?",
+  "expect": {
+   "routed": true,
+   "entity": "brand",
+   "top": null,
+   "metrics": [
+    "ubo",
+    "secondary_sales"
+   ],
+   "period": [
+    "2026-08-28",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-06-29",
+    "2026-08-27"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "ubo",
+     "chg_pct",
+     "<",
+     0.0,
+     false
+    ],
+    [
+     "secondary_sales",
+     "chg_pct",
+     ">",
+     15.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 75,
   "category": "Cross-metric diagnostics",
-  "prompt": "Compare the bottom 10 reps by PC with the top 10 reps by PC this month on average first call time, calls per day, and lines per call."
+  "prompt": "Compare the bottom 10 reps by PC with the top 10 reps by PC this month on average first call time, calls per day, and lines per call.",
+  "expect": {
+   "routed": true,
+   "entity": "rep",
+   "top": [
+    10,
+    "asc",
+    "pc",
+    "cur"
+   ],
+   "metrics": [
+    "calls_per_day",
+    "pc",
+    "avg_call_start_time",
+    "lpc"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-25"
+   ],
+   "compare": [
+    "2026-09-01",
+    "2026-09-25"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [
+    "groups"
+   ],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 76,
   "category": "Cross-metric diagnostics",
-  "prompt": "Find regions where the number of reps went down this quarter but secondary sales still grew by more than 10%, and show sales per rep."
+  "prompt": "Find regions where the number of reps went down this quarter but secondary sales still grew by more than 10%, and show sales per rep.",
+  "expect": {
+   "routed": true,
+   "entity": "region",
+   "top": null,
+   "metrics": [
+    "secondary_sales per working_reps",
+    "working_reps",
+    "secondary_sales"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-25"
+   ],
+   "compare": [
+    "2026-07-01",
+    "2026-07-25"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "working_reps",
+     "chg_pct",
+     "<",
+     0.0,
+     false
+    ],
+    [
+     "secondary_sales",
+     "chg_pct",
+     ">",
+     10.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 77,
   "category": "Cross-metric diagnostics",
-  "prompt": "List distributors whose primary sales fell more than 15% in October so far vs September, and show whether their outlets' orders also fell."
+  "prompt": "List distributors whose primary sales fell more than 15% in October so far vs September, and show whether their outlets' orders also fell.",
+  "expect": {
+   "routed": true,
+   "entity": "distributor",
+   "top": null,
+   "metrics": [
+    "primary_sales",
+    "orders"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-09-01",
+    "2026-09-30"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "primary_sales",
+     "chg_pct",
+     "<",
+     -15.0,
+     false
+    ],
+    [
+     "orders",
+     "chg_pct",
+     "<",
+     0.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 78,
   "category": "Cross-metric diagnostics",
-  "prompt": "Show zones where total calls increased by more than 10% this month but order value decreased, with the change in drop size and PC%."
+  "prompt": "Show zones where total calls increased by more than 10% this month but order value decreased, with the change in drop size and PC%.",
+  "expect": {
+   "routed": true,
+   "entity": "zone",
+   "top": null,
+   "metrics": [
+    "tc",
+    "order_value",
+    "drop_size",
+    "pc_pct"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-25"
+   ],
+   "compare": [
+    "2026-09-01",
+    "2026-09-25"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "tc",
+     "chg_pct",
+     ">",
+     10.0,
+     false
+    ],
+    [
+     "order_value",
+     "chg_pct",
+     "<",
+     0.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 79,
   "category": "Cross-metric diagnostics",
-  "prompt": "For the bottom 5 regions by UBO % in the last 30 days, show coverage %, PC%, and average calls per rep to explain why UBO is low."
+  "prompt": "For the bottom 5 regions by UBO % in the last 30 days, show coverage %, PC%, and average calls per rep to explain why UBO is low.",
+  "expect": {
+   "routed": true,
+   "entity": "region",
+   "top": [
+    5,
+    "asc",
+    "ubo_pct",
+    "cur"
+   ],
+   "metrics": [
+    "ubo_pct",
+    "coverage_pct",
+    "pc_pct",
+    "avg_calls_per_rep",
+    "ubo",
+    "calls_per_day",
+    "avg_call_start_time",
+    "lpc",
+    "drop_size"
+   ],
+   "period": [
+    "2026-09-27",
+    "2026-10-26"
+   ],
+   "compare": null,
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [
+    "diagnose"
+   ],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 80,
   "category": "Cross-metric diagnostics",
-  "prompt": "Compare primary sales, secondary sales, PC, and UBO for each zone for the last 90 days against the previous 90 days in a single table, and rank zones by overall improvement."
+  "prompt": "Compare primary sales, secondary sales, PC, and UBO for each zone for the last 90 days against the previous 90 days in a single table, and rank zones by overall improvement.",
+  "expect": {
+   "routed": true,
+   "entity": "zone",
+   "top": null,
+   "metrics": [
+    "primary_sales",
+    "secondary_sales",
+    "pc",
+    "ubo"
+   ],
+   "period": [
+    "2026-07-29",
+    "2026-10-25"
+   ],
+   "compare": [
+    "2026-05-01",
+    "2026-07-28"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [
+    "composite"
+   ],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 81,
   "category": "Cross-metric diagnostics",
-  "prompt": "Which top 5 categories have the biggest difference between their share of primary sales and their share of secondary sales this quarter?"
+  "prompt": "Which top 5 categories have the biggest difference between their share of primary sales and their share of secondary sales this quarter?",
+  "expect": {
+   "routed": true,
+   "entity": "category",
+   "top": [
+    5,
+    "desc",
+    "sharediff:primary_sales-secondary_sales",
+    "abs"
+   ],
+   "metrics": [
+    "sharediff:primary_sales-secondary_sales"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-26"
+   ],
+   "compare": null,
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 82,
   "category": "Cross-metric diagnostics",
-  "prompt": "Identify reps whose PC% improved by more than 5 points but whose order value fell in the last 30 days vs the previous 30 days."
+  "prompt": "Identify reps whose PC% improved by more than 5 points but whose order value fell in the last 30 days vs the previous 30 days.",
+  "expect": {
+   "routed": true,
+   "entity": "rep",
+   "top": null,
+   "metrics": [
+    "pc_pct",
+    "order_value"
+   ],
+   "period": [
+    "2026-09-27",
+    "2026-10-25"
+   ],
+   "compare": [
+    "2026-08-29",
+    "2026-09-26"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "pc_pct",
+     "chg_pts",
+     ">",
+     5.0,
+     false
+    ],
+    [
+     "order_value",
+     "chg_pct",
+     "<",
+     0.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 83,
   "category": "Cross-metric diagnostics",
-  "prompt": "Show distributors in the West zone with the highest secondary sales per outlet last month, only distributors with more than 100 outlets, and their primary sales growth."
+  "prompt": "Show distributors in the West zone with the highest secondary sales per outlet last month, only distributors with more than 100 outlets, and their primary sales growth.",
+  "expect": {
+   "routed": true,
+   "entity": "distributor",
+   "top": [
+    10,
+    "desc",
+    "secondary_sales per ubo",
+    "cur"
+   ],
+   "metrics": [
+    "secondary_sales per ubo",
+    "ubo",
+    "primary_sales"
+   ],
+   "period": [
+    "2026-09-01",
+    "2026-09-30"
+   ],
+   "compare": [
+    "2026-08-01",
+    "2026-08-31"
+   ],
+   "filters": [
+    [
+     "west",
+     "zone"
+    ]
+   ],
+   "split": [],
+   "conds": [
+    [
+     "ubo",
+     "cur",
+     ">",
+     100.0,
+     true
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 84,
   "category": "Cross-metric diagnostics",
-  "prompt": "Compare new outlet additions and inactive outlets for each region this quarter, and show regions where we lost more outlets than we added."
+  "prompt": "Compare new outlet additions and inactive outlets for each region this quarter, and show regions where we lost more outlets than we added.",
+  "expect": {
+   "routed": true,
+   "entity": "region",
+   "top": null,
+   "metrics": [
+    "new_outlets",
+    "inactive_outlets",
+    "inactive_outlets-new_outlets"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-25"
+   ],
+   "compare": [
+    "2026-07-01",
+    "2026-07-25"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "inactive_outlets-new_outlets",
+     "cur",
+     ">",
+     0.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 85,
   "category": "Cross-metric diagnostics",
-  "prompt": "For the top 10 distributors by secondary sales, show this month vs last month for secondary sales, billed outlets, and average bill value, and flag any distributor where all three fell."
+  "prompt": "For the top 10 distributors by secondary sales, show this month vs last month for secondary sales, billed outlets, and average bill value, and flag any distributor where all three fell.",
+  "expect": {
+   "routed": true,
+   "entity": "distributor",
+   "top": [
+    10,
+    "desc",
+    "secondary_sales",
+    "cur"
+   ],
+   "metrics": [
+    "ubo",
+    "drop_size",
+    "secondary_sales"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-09-01",
+    "2026-09-26"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "ubo",
+     "chg_pct",
+     "<",
+     0.0,
+     false
+    ],
+    [
+     "drop_size",
+     "chg_pct",
+     "<",
+     0.0,
+     false
+    ],
+    [
+     "secondary_sales",
+     "chg_pct",
+     "<",
+     0.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 86,
   "category": "Why & where (root cause)",
-  "prompt": "Why did primary sales in the North zone fall in the last 30 days compared with the previous 30 days, and which 5 distributors caused most of the drop?"
+  "prompt": "Why did primary sales in the North zone fall in the last 30 days compared with the previous 30 days, and which 5 distributors caused most of the drop?",
+  "expect": {
+   "routed": true,
+   "entity": null,
+   "top": null,
+   "metrics": [
+    "primary_sales"
+   ],
+   "period": [
+    "2026-09-27",
+    "2026-10-25"
+   ],
+   "compare": [
+    "2026-08-29",
+    "2026-09-26"
+   ],
+   "filters": [
+    [
+     "north",
+     "zone"
+    ]
+   ],
+   "split": [],
+   "conds": [
+    [
+     "primary_sales",
+     "chg_pct",
+     "<",
+     0.0,
+     false
+    ]
+   ],
+   "flags": [
+    "why"
+   ],
+   "grain": null,
+   "sections": 0,
+   "why_metric": "primary_sales"
+  }
  },
  {
   "id": 87,
   "category": "Why & where (root cause)",
-  "prompt": "Why is PC% low in Maharashtra this week? Break it down by region and show the 5 reps with the biggest drop vs last week."
+  "prompt": "Why is PC% low in Maharashtra this week? Break it down by region and show the 5 reps with the biggest drop vs last week.",
+  "expect": {
+   "routed": true,
+   "entity": "rep",
+   "top": [
+    5,
+    "desc",
+    "pc",
+    "cur"
+   ],
+   "metrics": [
+    "pc_pct",
+    "pc"
+   ],
+   "period": [
+    "2026-10-26",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-10-19",
+    "2026-10-19"
+   ],
+   "filters": [
+    [
+     "maharashtra",
+     null
+    ]
+   ],
+   "split": [],
+   "conds": [],
+   "flags": [
+    "why"
+   ],
+   "grain": null,
+   "sections": 0,
+   "why_metric": "pc_pct"
+  }
  },
  {
   "id": 88,
   "category": "Why & where (root cause)",
-  "prompt": "Where did secondary sales of Bertolli drop the most last month vs the month before? Show the bottom 5 regions and the bottom 5 distributors."
+  "prompt": "Where did secondary sales of Bertolli drop the most last month vs the month before? Show the bottom 5 regions and the bottom 5 distributors.",
+  "expect": {
+   "routed": true,
+   "entity": "region",
+   "top": [
+    5,
+    "asc",
+    "secondary_sales",
+    "cur"
+   ],
+   "metrics": [
+    "secondary_sales"
+   ],
+   "period": [
+    "2026-09-01",
+    "2026-09-30"
+   ],
+   "compare": [
+    "2026-08-01",
+    "2026-08-31"
+   ],
+   "filters": [
+    [
+     "bertolli",
+     null
+    ]
+   ],
+   "split": [],
+   "conds": [],
+   "flags": [
+    "why"
+   ],
+   "grain": null,
+   "sections": 0,
+   "why_metric": "secondary_sales"
+  }
  },
  {
   "id": 89,
   "category": "Why & where (root cause)",
-  "prompt": "Why did UBO fall in the South zone in October so far compared with the same days in September, and what should we do about it?"
+  "prompt": "Why did UBO fall in the South zone in October so far compared with the same days in September, and what should we do about it?",
+  "expect": {
+   "routed": true,
+   "entity": null,
+   "top": null,
+   "metrics": [
+    "ubo"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-09-01",
+    "2026-09-26"
+   ],
+   "filters": [
+    [
+     "south",
+     "zone"
+    ]
+   ],
+   "split": [],
+   "conds": [
+    [
+     "ubo",
+     "chg_pct",
+     "<",
+     0.0,
+     false
+    ]
+   ],
+   "flags": [
+    "why"
+   ],
+   "grain": null,
+   "sections": 0,
+   "why_metric": "ubo"
+  }
  },
  {
   "id": 90,
   "category": "Why & where (root cause)",
-  "prompt": "What are the bottom 10 reps in the East zone doing wrong this month compared with the top 10 reps? Compare first call time, calls per day, PC%, and drop size."
+  "prompt": "What are the bottom 10 reps in the East zone doing wrong this month compared with the top 10 reps? Compare first call time, calls per day, PC%, and drop size.",
+  "expect": {
+   "routed": true,
+   "entity": "rep",
+   "top": [
+    10,
+    "asc",
+    "pc",
+    "cur"
+   ],
+   "metrics": [
+    "calls_per_day",
+    "avg_call_start_time",
+    "pc_pct",
+    "drop_size",
+    "pc",
+    "lpc"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-25"
+   ],
+   "compare": [
+    "2026-09-01",
+    "2026-09-25"
+   ],
+   "filters": [
+    [
+     "east",
+     "zone"
+    ]
+   ],
+   "split": [],
+   "conds": [],
+   "flags": [
+    "diagnose",
+    "groups"
+   ],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 91,
   "category": "Why & where (root cause)",
-  "prompt": "Why did coverage drop in Karnataka over the last 2 weeks vs the 2 weeks before, and which territories are responsible?"
+  "prompt": "Why did coverage drop in Karnataka over the last 2 weeks vs the 2 weeks before, and which territories are responsible?",
+  "expect": {
+   "routed": true,
+   "entity": "territory",
+   "top": null,
+   "metrics": [
+    "coverage_pct"
+   ],
+   "period": [
+    "2026-10-13",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-09-29",
+    "2026-10-12"
+   ],
+   "filters": [
+    [
+     "karnataka",
+     null
+    ]
+   ],
+   "split": [],
+   "conds": [],
+   "flags": [
+    "why"
+   ],
+   "grain": null,
+   "sections": 0,
+   "why_metric": "coverage_pct"
+  }
  },
  {
   "id": 92,
   "category": "Why & where (root cause)",
-  "prompt": "Which zones and regions explain the overall 10% fall in productive calls this week, and how much of it was due to the holiday?"
+  "prompt": "Which zones and regions explain the overall 10% fall in productive calls this week, and how much of it was due to the holiday?",
+  "expect": {
+   "routed": true,
+   "entity": "zone",
+   "top": null,
+   "metrics": [
+    "pc"
+   ],
+   "period": [
+    "2026-10-26",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-10-19",
+    "2026-10-19"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [
+    "why"
+   ],
+   "grain": null,
+   "sections": 0,
+   "why_metric": "pc"
+  }
  },
  {
   "id": 93,
   "category": "Why & where (root cause)",
-  "prompt": "Why is the West zone's drop size lower this quarter than last quarter? Show the categories and reps behind it."
+  "prompt": "Why is the West zone's drop size lower this quarter than last quarter? Show the categories and reps behind it.",
+  "expect": {
+   "routed": true,
+   "entity": "zone",
+   "top": null,
+   "metrics": [
+    "drop_size"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-07-01",
+    "2026-09-30"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [
+    "why"
+   ],
+   "grain": null,
+   "sections": 0,
+   "why_metric": "drop_size"
+  }
  },
  {
   "id": 94,
   "category": "Why & where (root cause)",
-  "prompt": "Where are we losing outlets? Show regions with the biggest increase in inactive outlets this month vs last month and the top 5 distributors in each."
+  "prompt": "Where are we losing outlets? Show regions with the biggest increase in inactive outlets this month vs last month and the top 5 distributors in each.",
+  "expect": {
+   "routed": true,
+   "entity": "region",
+   "top": [
+    10,
+    "desc",
+    "inactive_outlets",
+    "cur"
+   ],
+   "metrics": [
+    "inactive_outlets",
+    "primary_sales"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-09-01",
+    "2026-09-26"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [
+    "drill",
+    "why"
+   ],
+   "grain": null,
+   "sections": 0,
+   "why_metric": "primary_sales"
+  }
  },
  {
   "id": 95,
   "category": "Why & where (root cause)",
-  "prompt": "Why did secondary sales grow in UP last month while primary sales fell, and which distributors show this pattern?"
+  "prompt": "Why did secondary sales grow in UP last month while primary sales fell, and which distributors show this pattern?",
+  "expect": {
+   "routed": true,
+   "entity": "distributor",
+   "top": null,
+   "metrics": [
+    "secondary_sales",
+    "primary_sales"
+   ],
+   "period": [
+    "2026-09-01",
+    "2026-09-30"
+   ],
+   "compare": [
+    "2026-08-01",
+    "2026-08-31"
+   ],
+   "filters": [
+    [
+     "up",
+     null
+    ]
+   ],
+   "split": [],
+   "conds": [
+    [
+     "primary_sales",
+     "chg_pct",
+     "<",
+     0.0,
+     false
+    ]
+   ],
+   "flags": [
+    "why"
+   ],
+   "grain": null,
+   "sections": 0,
+   "why_metric": "secondary_sales"
+  }
  },
  {
   "id": 96,
   "category": "Why & where (root cause)",
-  "prompt": "Why are total calls down in the last 7 days compared with the same 7 days last week in Gujarat, and which reps had the biggest fall?"
+  "prompt": "Why are total calls down in the last 7 days compared with the same 7 days last week in Gujarat, and which reps had the biggest fall?",
+  "expect": {
+   "routed": true,
+   "entity": "rep",
+   "top": null,
+   "metrics": [
+    "tc"
+   ],
+   "period": [
+    "2026-10-20",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-10-19",
+    "2026-10-25"
+   ],
+   "filters": [
+    [
+     "gujarat",
+     null
+    ]
+   ],
+   "split": [],
+   "conds": [],
+   "flags": [
+    "why"
+   ],
+   "grain": null,
+   "sections": 0,
+   "why_metric": "tc"
+  }
  },
  {
   "id": 97,
   "category": "Why & where (root cause)",
-  "prompt": "Explain why EL category sales fell in the North zone in Q2 vs Q1: was it fewer outlets, smaller orders, or fewer calls?"
+  "prompt": "Explain why EL category sales fell in the North zone in Q2 vs Q1: was it fewer outlets, smaller orders, or fewer calls?",
+  "expect": {
+   "routed": true,
+   "entity": "outlet",
+   "top": null,
+   "metrics": [
+    "orders",
+    "tc",
+    "secondary_sales",
+    "ubo",
+    "drop_size"
+   ],
+   "period": [
+    "2026-07-01",
+    "2026-09-30"
+   ],
+   "compare": [
+    "2026-04-01",
+    "2026-06-30"
+   ],
+   "filters": [
+    [
+     "el",
+     "category"
+    ],
+    [
+     "north",
+     "zone"
+    ]
+   ],
+   "split": [],
+   "conds": [],
+   "flags": [
+    "drivers",
+    "why"
+   ],
+   "grain": null,
+   "sections": 0,
+   "why_metric": "secondary_sales"
+  }
  },
  {
   "id": 98,
   "category": "Why & where (root cause)",
-  "prompt": "Why did new outlet additions slow down in October so far compared with the September average, and in which zones?"
+  "prompt": "Why did new outlet additions slow down in October so far compared with the September average, and in which zones?",
+  "expect": {
+   "routed": true,
+   "entity": "zone",
+   "top": null,
+   "metrics": [
+    "new_outlets"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-09-01",
+    "2026-09-30"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [
+    "why"
+   ],
+   "grain": null,
+   "sections": 0,
+   "why_metric": "new_outlets"
+  }
  },
  {
   "id": 99,
   "category": "Why & where (root cause)",
-  "prompt": "For the 5 regions with the lowest PC% this month, explain why PC% is low and give 3 actions for each."
+  "prompt": "For the 5 regions with the lowest PC% this month, explain why PC% is low and give 3 actions for each.",
+  "expect": {
+   "routed": true,
+   "entity": "region",
+   "top": [
+    5,
+    "asc",
+    "pc_pct",
+    "cur"
+   ],
+   "metrics": [
+    "pc_pct",
+    "calls_per_day",
+    "avg_call_start_time",
+    "lpc",
+    "drop_size"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-26"
+   ],
+   "compare": null,
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [
+    "diagnose"
+   ],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 100,
   "category": "Why & where (root cause)",
-  "prompt": "Why was Monday's productive call count the lowest of last week, and which zones and reps were most affected?"
+  "prompt": "Why was Monday's productive call count the lowest of last week, and which zones and reps were most affected?",
+  "expect": {
+   "routed": true,
+   "entity": "zone",
+   "top": null,
+   "metrics": [
+    "pc"
+   ],
+   "period": [
+    "2026-10-19",
+    "2026-10-25"
+   ],
+   "compare": null,
+   "filters": [],
+   "split": [],
+   "conds": [],
+   "flags": [
+    "why"
+   ],
+   "grain": null,
+   "sections": 0,
+   "why_metric": "pc"
+  }
  },
  {
   "id": 101,
   "category": "Multi-line & Hinglish",
-  "prompt": "Take the last 60 days.\nFind the top 10 reps by secondary sales in the South zone.\nShow their PC%, calls per day, and drop size.\nThen tell me which of them improved compared with the previous 60 days."
+  "prompt": "Take the last 60 days.\nFind the top 10 reps by secondary sales in the South zone.\nShow their PC%, calls per day, and drop size.\nThen tell me which of them improved compared with the previous 60 days.",
+  "expect": {
+   "routed": true,
+   "entity": "rep",
+   "top": [
+    10,
+    "desc",
+    "secondary_sales",
+    "cur"
+   ],
+   "metrics": [
+    "calls_per_day",
+    "secondary_sales",
+    "pc_pct",
+    "drop_size"
+   ],
+   "period": [
+    "2026-08-28",
+    "2026-10-25"
+   ],
+   "compare": [
+    "2026-06-30",
+    "2026-08-27"
+   ],
+   "filters": [
+    [
+     "south",
+     "zone"
+    ]
+   ],
+   "split": [],
+   "conds": [
+    [
+     "secondary_sales",
+     "chg_pct",
+     ">",
+     0.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 102,
   "category": "Multi-line & Hinglish",
-  "prompt": "Pichle 90 din ke top 10 distributors dikhao North zone mein, aur batao kis distributor ki primary sale 15% se zyada badhi lekin secondary sale gir gayi."
+  "prompt": "Pichle 90 din ke top 10 distributors dikhao North zone mein, aur batao kis distributor ki primary sale 15% se zyada badhi lekin secondary sale gir gayi.",
+  "expect": {
+   "routed": true,
+   "entity": "distributor",
+   "top": [
+    10,
+    "desc",
+    "primary_sales",
+    "cur"
+   ],
+   "metrics": [
+    "primary_sales",
+    "secondary_sales"
+   ],
+   "period": [
+    "2026-07-29",
+    "2026-10-25"
+   ],
+   "compare": [
+    "2026-05-01",
+    "2026-07-28"
+   ],
+   "filters": [
+    [
+     "north",
+     "zone"
+    ]
+   ],
+   "split": [],
+   "conds": [
+    [
+     "primary_sales",
+     "chg_pct",
+     ">",
+     15.0,
+     false
+    ],
+    [
+     "secondary_sales",
+     "chg_pct",
+     "<",
+     0.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 103,
   "category": "Multi-line & Hinglish",
-  "prompt": "इस महीने East zone के bottom 5 reps कौन हैं PC% के हिसाब से, और पिछले महीने से उनका PC% कितना बदला?"
+  "prompt": "इस महीने East zone के bottom 5 reps कौन हैं PC% के हिसाब से, और पिछले महीने से उनका PC% कितना बदला?",
+  "expect": {
+   "routed": true,
+   "entity": "rep",
+   "top": [
+    5,
+    "asc",
+    "pc_pct",
+    "cur"
+   ],
+   "metrics": [
+    "pc_pct"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-09-01",
+    "2026-09-26"
+   ],
+   "filters": [
+    [
+     "east",
+     "zone"
+    ]
+   ],
+   "split": [],
+   "conds": [],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 104,
   "category": "Multi-line & Hinglish",
-  "prompt": "Compare this quarter with last quarter:\n1. Primary sales by zone\n2. Secondary sales by zone\n3. PC% by zone\nHighlight zones that declined on all three."
+  "prompt": "Compare this quarter with last quarter:\n1. Primary sales by zone\n2. Secondary sales by zone\n3. PC% by zone\nHighlight zones that declined on all three.",
+  "expect": {
+   "routed": true,
+   "entity": "zone",
+   "top": null,
+   "metrics": [
+    "primary_sales",
+    "secondary_sales",
+    "pc_pct"
+   ],
+   "period": [
+    "2026-10-01",
+    "2026-10-26"
+   ],
+   "compare": [
+    "2026-07-01",
+    "2026-07-26"
+   ],
+   "filters": [],
+   "split": [],
+   "conds": [
+    [
+     "primary_sales",
+     "chg_pct",
+     "<",
+     0.0,
+     false
+    ],
+    [
+     "secondary_sales",
+     "chg_pct",
+     "<",
+     0.0,
+     false
+    ],
+    [
+     "pc_pct",
+     "chg_pts",
+     "<",
+     0.0,
+     false
+    ]
+   ],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  },
  {
   "id": 105,
   "category": "Multi-line & Hinglish",
-  "prompt": "Last 30 days, Maharashtra only, Figaro brand only. Top 10 distributors by secondary sales, their growth vs the previous 30 days, and their billed outlets."
+  "prompt": "Last 30 days, Maharashtra only, Figaro brand only. Top 10 distributors by secondary sales, their growth vs the previous 30 days, and their billed outlets.",
+  "expect": {
+   "routed": true,
+   "entity": "distributor",
+   "top": [
+    10,
+    "desc",
+    "secondary_sales",
+    "cur"
+   ],
+   "metrics": [
+    "ubo",
+    "secondary_sales"
+   ],
+   "period": [
+    "2026-09-27",
+    "2026-10-25"
+   ],
+   "compare": [
+    "2026-08-29",
+    "2026-09-26"
+   ],
+   "filters": [
+    [
+     "figaro",
+     "brand"
+    ],
+    [
+     "maharashtra",
+     null
+    ]
+   ],
+   "split": [],
+   "conds": [],
+   "flags": [],
+   "grain": null,
+   "sections": 0
+  }
  }
 ]
